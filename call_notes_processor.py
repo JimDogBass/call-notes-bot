@@ -11,6 +11,7 @@ import re
 import json
 import time
 import logging
+import base64
 from datetime import datetime
 from typing import Optional, Dict, Any
 
@@ -68,8 +69,17 @@ def get_google_services():
 
     # Use JSON from environment variable (Railway) or file (local)
     if GOOGLE_SERVICE_ACCOUNT_JSON:
-        import json as json_module
-        service_account_info = json_module.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+        json_str = GOOGLE_SERVICE_ACCOUNT_JSON
+
+        # Try base64 decode first (for Railway)
+        try:
+            json_str = base64.b64decode(json_str).decode('utf-8')
+            logger.info("Decoded base64 service account JSON")
+        except Exception:
+            # Not base64, use as-is
+            pass
+
+        service_account_info = json.loads(json_str)
         credentials = service_account.Credentials.from_service_account_info(
             service_account_info,
             scopes=scopes
