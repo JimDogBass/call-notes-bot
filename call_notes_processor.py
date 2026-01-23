@@ -97,8 +97,18 @@ def get_google_services():
 
 
 def get_new_pdf_files(drive_service) -> list:
-    """Get unprocessed PDF files from Google Drive folder."""
-    query = f"'{GOOGLE_DRIVE_FOLDER_ID}' in parents and mimeType='application/pdf' and not name contains '{PROCESSED_PREFIX}'"
+    """Get unprocessed PDF files from Google Drive folder (created in last 10 minutes)."""
+    # Only look at files created in the last 10 minutes (poll interval + buffer)
+    from datetime import datetime, timedelta, timezone
+    cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+    cutoff_str = cutoff_time.strftime('%Y-%m-%dT%H:%M:%S')
+
+    query = (
+        f"'{GOOGLE_DRIVE_FOLDER_ID}' in parents and "
+        f"mimeType='application/pdf' and "
+        f"not name contains '{PROCESSED_PREFIX}' and "
+        f"createdTime > '{cutoff_str}'"
+    )
     results = drive_service.files().list(
         q=query,
         fields="files(id, name, createdTime)",
