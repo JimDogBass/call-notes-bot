@@ -1,0 +1,24 @@
+# Credentials - DO NOT COMMIT
+*.json
+ms_refresh_token.txt
+.env
+CREDENTIALS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+~$*
