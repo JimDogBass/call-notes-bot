@@ -20,6 +20,7 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import pdfplumber
+import PyPDF2
 import io
 
 # ============================================================================
@@ -218,13 +219,31 @@ def log_processing_error(sheets_service, filename: str, error_message: str, node
 # ============================================================================
 
 def extract_pdf_text(pdf_content: bytes) -> str:
-    """Extract text from PDF content."""
+    """Extract text from PDF content. Tries pdfplumber first, falls back to PyPDF2."""
     text = ""
-    with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
-        for page in pdf.pages:
+
+    # Try pdfplumber first
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        if text.strip():
+            return text.strip()
+    except Exception as e:
+        logger.warning(f"pdfplumber failed, trying PyPDF2: {e}")
+
+    # Fallback to PyPDF2
+    try:
+        reader = PyPDF2.PdfReader(io.BytesIO(pdf_content))
+        for page in reader.pages:
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
+    except Exception as e:
+        logger.error(f"PyPDF2 also failed: {e}")
+
     return text.strip()
 
 
