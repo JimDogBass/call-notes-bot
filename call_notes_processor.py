@@ -377,6 +377,8 @@ class GraphAPIClient:
         if not self.refresh_token:
             raise Exception("No refresh token available. Please authenticate first.")
 
+        logger.info(f"Refresh token length: {len(self.refresh_token)} chars")
+
         url = f"https://login.microsoftonline.com/{MS_TENANT_ID}/oauth2/v2.0/token"
 
         data = {
@@ -388,6 +390,8 @@ class GraphAPIClient:
         }
 
         response = requests.post(url, data=data)
+        if response.status_code != 200:
+            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
         response.raise_for_status()
 
         tokens = response.json()
