@@ -34,10 +34,8 @@ GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "1SfFPHC1DRUzc
 GOOGLE_SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "1Z_5rhbhe4lW13t4DKOzhWW-cKLbeyneUHTZXBUmBM-g")
 
 # Azure OpenAI
-AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT", "")
-AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY", "")
-AZURE_OPENAI_DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini")
-AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+# Gemini API (Google AI Studio)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Microsoft Graph (Delegated OAuth2)
 MS_TENANT_ID = os.environ.get("MS_TENANT_ID", "")
@@ -310,44 +308,46 @@ def count_words(text: str) -> int:
 
 
 # ============================================================================
-# AZURE OPENAI
+# GEMINI API (Google AI Studio)
 # ============================================================================
 
-def call_azure_openai(prompt_template: str, transcript: str, consultant_name: str = '', candidate_name: str = '') -> str:
-    """Call Azure OpenAI to extract call notes."""
+def call_gemini(prompt_template: str, transcript: str, consultant_name: str = '', candidate_name: str = '') -> str:
+    """Call Gemini 2.5 Pro to extract call notes."""
 
     # Build the full prompt
     full_prompt = prompt_template.replace('{{transcript_text}}', transcript)
     full_prompt = full_prompt.replace('{{recruiter_names}}', consultant_name)
     full_prompt = full_prompt.replace('{{candidate_names}}', candidate_name)
 
-    url = f"{AZURE_OPENAI_ENDPOINT}/openai/deployments/{AZURE_OPENAI_DEPLOYMENT}/chat/completions?api-version={AZURE_OPENAI_API_VERSION}"
+    system_instruction = "You are a recruitment call analyst for Meraki Talent, a UK-based financial services recruitment agency. Extract candidate information according to the provided template. Only include information explicitly stated by the candidate about themselves. Recruiter statements must be ignored. If information is not explicitly stated, write 'Not stated'. Do not infer or guess."
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key={GEMINI_API_KEY}"
 
     headers = {
-        'Content-Type': 'application/json',
-        'api-key': AZURE_OPENAI_API_KEY
+        'Content-Type': 'application/json'
     }
 
     body = {
-        "messages": [
-            {
-                "role": "system",
-                "content": "You are a recruitment call analyst for Meraki Talent, a UK-based financial services recruitment agency. Extract candidate information according to the provided template. Only include information explicitly stated by the candidate about themselves. Recruiter statements must be ignored. If information is not explicitly stated, write 'Not stated'. Do not infer or guess."
-            },
+        "system_instruction": {
+            "parts": [{"text": system_instruction}]
+        },
+        "contents": [
             {
                 "role": "user",
-                "content": full_prompt
+                "parts": [{"text": full_prompt}]
             }
         ],
-        "temperature": 0.1,
-        "max_tokens": 2000
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 2000
+        }
     }
 
     response = requests.post(url, headers=headers, json=body, timeout=120)
     response.raise_for_status()
 
     data = response.json()
-    return data['choices'][0]['message']['content']
+    return data['candidates'][0]['content']['parts'][0]['text']
 
 
 # ============================================================================
@@ -582,9 +582,9 @@ def process_single_file(
             # Use default/fallback prompt
             prompt_template = prompts.get('Default', 'Please summarize this call transcript:\n\n{{transcript_text}}')
 
-        # 7. Call Azure OpenAI
-        logger.info(f"Calling Azure OpenAI for {filename}")
-        notes = call_azure_openai(
+        # 7. Call Gemini 2.5 Pro
+        logger.info(f"Calling Gemini 2.5 Pro for {filename}")
+        notes = call_gemini(
             prompt_template,
             transcript,
             consultant_name,
