@@ -340,6 +340,29 @@ To refresh:
 
 ---
 
+## Planned: Private Channels per Consultant
+
+**Status:** Scheduled for implementation
+
+**Current:** Messages sent as 1:1 chats from Joel to each consultant
+
+**Planned:** Post to private Teams channels for better persistence and searchability
+
+**Implementation steps:**
+1. Create a "Call Notes Bot" Team in Microsoft Teams
+2. Create a private channel for each consultant (script or manual)
+3. Add `ChannelId` column to Consultants Google Sheet
+4. Update code to post to channel instead of 1:1 chat
+5. Test notifications and card rendering in channels
+
+**Benefits:**
+- Notes persist in searchable channel history
+- Consultants get notifications
+- Private to each consultant
+- Easier to reference past calls
+
+---
+
 ## Contact
 
 **Joel** - Meraki Talent
