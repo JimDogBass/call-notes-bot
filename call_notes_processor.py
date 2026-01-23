@@ -321,7 +321,7 @@ def call_gemini(prompt_template: str, transcript: str, consultant_name: str = ''
 
     system_instruction = "You are a recruitment call analyst for Meraki Talent, a UK-based financial services recruitment agency. Extract candidate information according to the provided template. Only include information explicitly stated by the candidate about themselves. Recruiter statements must be ignored. If information is not explicitly stated, write 'Not stated'. Do not infer or guess."
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-preview-05-06:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
 
     headers = {
         'Content-Type': 'application/json'
