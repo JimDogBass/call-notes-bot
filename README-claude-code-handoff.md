@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 23 Jan 2026 @ 12:00
+**Last Updated:** 23 Jan 2026 @ 14:30
 
 ---
 
@@ -40,7 +40,7 @@ python call_notes_processor.py
 2. Extracts text using pdfplumber (with PyPDF2 fallback)
 3. Parses consultant name from filename
 4. Looks up consultant info + desk-specific prompt from Google Sheets
-5. Calls Azure OpenAI (GPT-4o-mini) to extract structured call notes
+5. Calls Gemini 2.5 Pro to extract structured call notes
 6. Sends Adaptive Card to consultant via Teams (1:1 chat from Joel)
 7. Renames processed files with `[PROCESSED]` prefix
 8. Logs skipped calls (short transcripts, unknown consultants) to Google Sheets
@@ -81,7 +81,7 @@ Lookup Consultant in Google Sheets --> Get Desk, TeamsUserId
 Fetch Desk-Specific Prompt from Google Sheets
     |
     v
-Azure OpenAI (GPT-4o-mini) --> Extract structured notes
+Gemini 2.5 Pro --> Extract structured notes
     |
     v
 Build Adaptive Card
@@ -106,8 +106,7 @@ Set these in Railway dashboard:
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | Base64-encoded service account JSON | See encoding instructions below |
 | `GOOGLE_DRIVE_FOLDER_ID` | `1SfFPHC1DRUzcR8FDcdQkzr5oJZhtNSzr` | Google Drive folder ID |
 | `GOOGLE_SPREADSHEET_ID` | `1Z_5rhbhe4lW13t4DKOzhWW-cKLbeyneUHTZXBUmBM-g` | Google Sheets spreadsheet ID |
-| `AZURE_OPENAI_ENDPOINT` | `https://meraki-call-notes-bot.openai.azure.com/` | Azure OpenAI endpoint |
-| `AZURE_OPENAI_API_KEY` | (see CREDENTIALS.md) | Azure OpenAI API key |
+| `GEMINI_API_KEY` | (see CREDENTIALS.md) | Google AI Studio API key |
 | `MS_TENANT_ID` | `0591f50e-b7a3-41d0-a0b1-b26a2df48dfc` | Microsoft tenant ID |
 | `MS_CLIENT_ID` | `7e1c4f4b-e80e-42ed-a1ac-fc1e0bb3af21` | Azure app registration ID |
 | `MS_CLIENT_SECRET` | (see CREDENTIALS.md) | Azure app client secret |
@@ -240,7 +239,7 @@ Prompts are managed in Google Sheets and can be updated anytime without redeploy
 | PDF extraction fails | Try PyPDF2 fallback, then log to Processing_Errors |
 | Consultant not found | Log to Skipped_Calls (reason: "Unknown consultant"), rename file |
 | Consultant inactive | Log to Skipped_Calls (reason: "Inactive consultant"), rename file |
-| Azure OpenAI fails | Log error, skip file |
+| Gemini API fails | Log error, skip file |
 | Teams delivery fails | Log error, do NOT rename (will retry next cycle) |
 
 ---
@@ -317,6 +316,26 @@ To refresh:
 4. **Token truncation** - MS_REFRESH_TOKEN was truncated when pasting. Full token is 1493 characters.
 
 **Status: DEPLOYED AND WORKING**
+
+### 23 Jan 2026 - Session 6 (Afternoon)
+
+**Completed:**
+- [x] Added 10-minute file age filter (only process new files, skip backlog)
+- [x] Switched from Azure OpenAI (GPT-4o-mini) to Gemini 2.5 Pro
+- [x] Better quality extraction at lower cost ($1.25/M input vs $2.50/M)
+- [x] Removed unused Azure OpenAI and Bot Framework environment variables
+
+**Railway Environment Variables (final):**
+- GEMINI_API_KEY
+- GOOGLE_DRIVE_FOLDER_ID
+- GOOGLE_SERVICE_ACCOUNT_JSON
+- GOOGLE_SPREADSHEET_ID
+- JOEL_AAD_ID
+- MS_CLIENT_ID
+- MS_CLIENT_SECRET
+- MS_REFRESH_TOKEN
+- MS_TENANT_ID
+- POLL_INTERVAL
 
 ---
 
