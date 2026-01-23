@@ -1,0 +1,1060 @@
+Desk,PromptTemplate,Description,LastUpdated
+A&F,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements must be IGNORED and not included in the output.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes (race, ethnicity, religion, etc.).
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate.
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Functional Discipline
+• Content: Specific vertical (e.g., Audit, Tax, FP&A, Treasury, Controllership, Technical Accounting, M&A).
+
+Certifications & Education
+• Content: CPA, CA, ACA, ACCA, CFA, CIMA, MBA, or ""Big 4 Qualified"".
+
+Industry / Client Exposure
+• Content: Type of companies supported (e.g., SaaS, Manufacturing, Financial Services, Publicly Traded/SEC).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""want to move out of audit,"" ""want P&L ownership"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""strategic finance partner role,"" ""pre-IPO environment"").
+
+Key Responsibilities & Scope
+• Content: Revenue managed ($ P&L), month-end close timeline, ASC 606/842, 10-K/10-Q filing, tax provision.
+
+ERP & Financial Systems
+• Content: NetSuite, SAP, Oracle, Quickbooks, Anaplan, Tableau, Excel proficiency.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on market trends or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Accounting & Finance roles,2026-01-21
+Alternative Investments,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• If a speaker provides long descriptions of a third-party firm, fund strategy, or job opening, identify them as the Recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints (hybrid/onsite/remote).
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to (cities/regions/countries).
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (e.g., ""$150k base"", ""bonus 100%"", ""carry/promote participation"").
+• Disallowed: AUM, fund size, firm size, recruiter-stated ranges, or hypothetical numbers.
+• Validation: If the candidate did not state their personal pay in currency/bonus terms, output exactly ""Not stated"".
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Asset Class
+• Definition: What the candidate has invested in, underwritten, covered, or explicitly wants to do next.
+• Allowed: Private Equity, VC, Growth Equity, Private Credit, Infrastructure, Real Assets, Secondaries, Co-invest.
+• Disallowed: Public Equities, Long/Short Hedge Funds, pure LP types (Family Offices/Endowments) without strategy context.
+
+Strategy
+• Content: Candidate-stated investing approach.
+• Granular examples allowed: Buyout, minority growth, control, structured equity, mezzanine, preferred equity, convertible debt, unitranche, senior secured, special situations, distressed debt, turnarounds.
+
+Sector focus
+• Content: Candidate-stated sector concentration (e.g., software, fintech, consumer, healthcare, industrials, energy, infra).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title (e.g., ""Associate"", ""VP"", ""Principal"").
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""contract ended"", ""laid off"", ""looking for more deal flow"").
+
+Aim for new role
+• Content: Candidate stated day-to-day preferences, what to avoid, platform/team preferences, hours/travel constraints.
+
+Investment Lifecycle Exposure
+• Content: Specific tasks the candidate states they performed (sourcing, diligence, modeling, IC memos, execution, portfolio support, add-ons, exits).
+
+Deal experience
+• Content: Counts, typical deal size, check size, leverage, and specific role on deals (ONLY if stated by candidate).
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience/responsibilities.
+• Interesting insights: Unique market views, thesis preferences, or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Private Equity / VC / Credit / Hedge Funds,2026-01-21
+IR & Fundraising,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• If a speaker provides long descriptions of a third-party firm, fund strategy, or job opening, identify them as the Recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints (hybrid/onsite/remote).
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to (cities/regions/countries).
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (e.g., ""$150k base"", ""bonus 100%"", ""carry/promote participation"").
+• Disallowed: AUM, fund size, firm size, recruiter-stated ranges, or hypothetical numbers.
+• Validation: If the candidate did not state their personal pay in currency/bonus terms, output exactly ""Not stated"".
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Product Specialism (Asset Class)
+• Definition: The type of investment product the candidate has experience raising capital for.
+• Allowed: Private Equity (LBO, Growth), Private Credit, Real Estate, Infrastructure, Hedge Funds (L/S, Global Macro, Multi-Strat), Venture Capital, Secondaries, FoF.
+
+LP Network / Channel Focus
+• Definition: The specific types of investors (LPs) the candidate manages or sells to.
+• Allowed: Institutional (Pensions, Endowments, Sovereign Wealth), Family Offices, Wealth Management/Wirehouses, RIAs, Consultants, Insurance.
+• Validation: Must be explicit. Do not infer ""Institutional"" if they just say ""investors.""
+
+Geography Coverage (LPs)
+• Content: Specific regions where the candidate has LP relationships (e.g., ""West Coast US"", ""DACH Region"", ""Middle East"", ""Nordics"").
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""fundraising cycle complete"", ""want a better brand"", ""want to move from Project Mgmt to Sales"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""want to cover a different region"", ""want a first-time fund challenge"", ""prefer established platform"").
+
+Fundraising Track Record
+• Definition: Detailed breakdown of capital raised and campaign success.
+• Content to Extract:
+  1. Volume: Total capital raised (e.g., ""$500m raised personally"", ""$2bn fund closed"").
+  2. Role specifics: ""Hunter"" (Distribution/Sales) vs. ""Farmer"" (Account Mgmt) vs. Project Management (DDQs, PPMs).
+  3. Key Wins: Specific LPs brought in (anonymized if needed).
+  4. Cycle Exposure: Pre-marketing → Roadshow → First Close → Final Close.
+  5. Outcomes: ""Oversubscribed"", ""Hit hard cap"", ""Raised first-time fund"", ""Re-ups achieved.""
+
+Technical Skills (IR Specific)
+• Content: CRM systems (Salesforce, DealCloud), reporting tools, DDQ/RFP experience, investor portals.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on LP trends, fundraising market, or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Investor Relations & Fundraising,2026-01-21
+Compliance,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (Base, Bonus).
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Risk Discipline
+• Content: Primary focus (e.g., Financial Crime/AML, Compliance Advisory, Market Risk, Credit Risk, Operational Risk, Surveillance, Regulatory Affairs).
+
+Line of Defense (LOD)
+• Content: 1st Line (Business Control/Front Office), 2nd Line (Oversight/Compliance Function), or 3rd Line (Internal Audit).
+
+Asset Class / Product Coverage
+• Content: Specific products covered (e.g., Equities, Fixed Income, FX, Retail Banking, Wealth Management, Private Equity, Derivatives).
+
+Regulatory Frameworks
+• Definition: Specific regulations the candidate manages.
+• Examples: Dodd-Frank, MiFID II, GDPR, CCAR, Basel III, Volcker Rule, SMCR, BSA/AML, CASS.
+
+Regulator Exposure
+• Content: Specific bodies the candidate interacts with (e.g., SEC, FINRA, FCA, PRA, OCC, Fed, CFTC).
+• Level of interaction: Writing reports vs. direct exams/interviews.
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role.
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""want to move to buy-side"", ""advisory focused rather than monitoring"").
+
+Key Projects / Remediations
+• Content: Specific initiatives (e.g., ""Lead on Section 166 review"", ""KYC remediation project"", ""Implementing trade surveillance system"").
+
+Certifications
+• Content: Explicit mentions of CAMS (ACAMS), ICA, CFA, FRM, Series 7/24/14.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on regulatory trends or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Compliance and Risk roles,2026-01-21
+Fintech,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• If a speaker provides long descriptions of a third-party firm, fund strategy, or job opening, identify them as the Recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (Base, Bonus, Equity/Options).
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Fintech Vertical
+• Definition: The specific sector of Fintech the candidate has experience in.
+• Allowed: Payments (Acquiring/Issuing), Neo-banking/Challenger Banks, Lending (BNPL/Consumer/SME), Wealthtech/Robo-advisory, Crypto/Web3, Regtech, Insurtech, Banking-as-a-Service (BaaS).
+
+Functional Focus
+• Content: Primary role function (e.g., Product Management, Engineering, Partnerships/Business Development, Risk/Compliance, Growth Marketing).
+
+Domain Expertise
+• Definition: Specific subject matter knowledge.
+• Examples: ISO 20022, ACH/SEPA/SWIFT, Open Banking (PSD2), Card Schemes (Visa/MC rules), Ledgering, Underwriting models, KYC/AML workflows, Real-time payments (RTP).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""want to move from Bank to Start-up"", ""risk appetite changed"", ""product sunsetted"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""Series B scale-up"", ""B2B infrastructure role"", ""ownership of P&L"").
+
+Stage & Scale Experience
+• Content: Company maturity (Seed, Series A-C, Pre-IPO, Public) and user/transaction scale (e.g., ""processing 1m transactions/day"", ""scaling from 0 to 1"").
+
+Tech & Tools
+• Content: APIs (REST/GraphQL), Postman, SQL, Core Banking Systems (Mambu, Thought Machine), Cloud (AWS/GCP), Jira/Confluence.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on market trends (e.g., ""decline of physical cards"", ""AI in fraud detection"") or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",FinTech roles,2026-01-21
+FS Opps,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements must be IGNORED and not included in the output.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes (race, ethnicity, religion, etc.).
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate.
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Functional Area
+• Definition: Core operational function (e.g., Trade Support, Settlements, Reconciliation, KYC/AML, Corporate Actions, Fund Accounting, Collateral Mgmt).
+
+Asset Class Coverage
+• Definition: Instruments supported (e.g., Equities, Fixed Income, FX, OTC Derivatives, Commodities, Structured Products).
+
+Systems & Platforms
+• Content: Mentions of Bloomberg, Aladdin, Murex, Calypso, DTCC, Euroclear, SWIFT, Geneva, etc.
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role.
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""closer to trading desk"", ""project-based role"").
+
+Operational Scope & Volumes
+• Content: Trade volumes (tickets per day), desk coverage size, error rates, deadlines (T+1), book size managed.
+
+Process Improvement & Automation
+• Content: Automating spreadsheets, VBA/Python scripting, reducing trade breaks, system migration.
+
+Technical Skills (Data/Automation)
+• Content: Excel (VLOOKUP, Macros), VBA, SQL, Python, Tableau, Alteryx.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on market infrastructure or process hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Financial Services Operations,2026-01-21
+HR,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes (race, ethnicity, religion, etc.).
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate.
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Functional Focus
+• Definition: Primary HR discipline (e.g., HRBP/Generalist, Talent Acquisition, Total Rewards, L&D, Employee Relations, People Analytics).
+
+Employee Scope & Scale
+• Content: Headcount supported (e.g., ""supporting 400 engineers""), geography (Global vs Domestic), and workforce type (Corporate, Blue-Collar, Union, R&D).
+
+Industry Experience
+• Content: Specific industries worked in (e.g., SaaS, Manufacturing, Fintech, Healthcare).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role.
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""want a standalone Head of People role"", ""want strategic BP work"").
+
+Key Projects / Wins
+• Content: HRIS implementations, restructuring/RIFs, M&A integration, comp philosophy redesign, cultural transformation.
+
+HR Tech & Tools
+• Content: Mentions of Workday, BambooHR, Greenhouse, Lever, ADP, etc.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on culture/policy or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",HR roles,2026-01-21
+Legal,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements must be IGNORED and not included in the output.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes (race, ethnicity, religion, etc.).
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (Base, Bonus, Sign-on).
+• Disallowed: Recruiter-stated ranges or Cravath scale assumptions unless confirmed by candidate.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Practice Area
+• Content: Specific legal focus (e.g., M&A, Capital Markets, Litigation, Real Estate, IP, Antitrust, Banking & Finance, Employment).
+
+PQE & Admissions
+• Content: Years Post-Qualified Experience (PQE) or JD graduation year. Bar admissions (e.g., NY Bar, Solicitor England & Wales).
+
+Firm / In-House Background
+• Content: Type of current employer (e.g., Magic Circle, US Law Firm, Boutique, In-House Counsel).
+
+Title
+• Content: Candidate's current or most recent title (e.g., Associate, Senior Associate, Counsel, Partner).
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""blocked path to partnership"", ""want better work-life balance"", ""want to go in-house"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""retooling into a new practice area"", ""geographic move"").
+
+Matter Experience / Deal Sheet
+• Content: Key cases or transactions handled. Deal sizes, case complexity, specific regulatory frameworks, or sector focus.
+
+Business Development (Partners/Senior)
+• Content: Portable book of business ($ value), client relationships owned. (Leave ""Not stated"" for Associates).
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on legal trends or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Legal and In-house Counsel,2026-01-21
+Professional Services,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (Base, Bonus, Sign-on).
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Service Line / Practice Area
+• Content: Specific focus (e.g., Strategy, Operations, Digital/Tech Implementation, M&A/Transaction Services, Restructuring, Human Capital, Risk/Regulatory).
+
+Firm Type / Background
+• Content: Current employer type (e.g., MBB, Big 4, Tier 2 Strategy, Boutique, Independent Contractor).
+
+Industry Alignment
+• Content: Specific industries served (e.g., TMT, Financial Services, Healthcare/Life Sciences, Energy, Public Sector).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""want less travel"", ""blocked path to Partner"", ""want to move from Implementation to Strategy"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""industry exit"", ""boutique firm with higher equity"", ""PE Ops team"").
+
+Utilization & Metrics
+• Content: Billable hours/utilization rates, project sizes (budget/duration), team sizes managed.
+
+Business Development / Sales (Senior Candidates)
+• Content: Annual sales targets ($ managed revenue), ""Origination"" vs ""Delivery"" split, commercial responsibilities. (Leave ""Not stated"" for junior roles).
+
+Travel Willingness
+• Content: Explicit constraints on travel (e.g., ""no more 100% travel"", ""open to Monday-Thursday model"", ""local clients only"").
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on consulting trends or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Professional Services / Consulting,2026-01-21
+Real Estate Investment,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• If a speaker provides long descriptions of a third-party firm, fund strategy, or job opening, identify them as the Recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints (hybrid/onsite/remote).
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to (cities/regions/countries).
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (e.g., ""$120k base"", ""bonus 50%"", ""carry/promote participation"").
+• Disallowed: AUM, fund size, firm size, recruiter-stated ranges, or hypothetical numbers.
+• Validation: If the candidate did not state their personal pay in currency/bonus terms, output exactly ""Not stated"".
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Asset Class (High Level)
+• Definition: Property types the candidate has experience with or explicitly wants to do next.
+• Allowed: Multifamily, Industrial/Logistics, Office, Retail, Hospitality/Hotels, Data Centers, Life Sciences, Self-Storage, Student Housing, Single-Family Rental (SFR), Mixed-Use.
+
+Strategy (High Level)
+• Content: Candidate-stated investment approach/risk profile.
+• Allowed Keywords: Core, Core-Plus, Value-Add, Opportunistic, Distressed, Ground-up Development, Redevelopment, Debt/Lending.
+
+Geography Coverage
+• Content: Specific markets the candidate covers (e.g., ""NY Metro"", ""Sunbelt"", ""West Coast"", ""London"", ""Pan-European"").
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""deal flow dried up"", ""fund is fully deployed"", ""want development exposure"").
+
+Aim for new role
+• Content: Candidate preferences for platform, culture, or specific role change.
+
+Deal Experience / Deal Sheet
+• Definition: Detailed breakdown of specific transactions or track record.
+• Content to Extract:
+  1. Volume/Size: Number of deals, total GAV (Gross Asset Value), equity check size, debt size, square footage/units.
+  2. Role: Specific actions (Sourced, underwrote, ran diligence, negotiated PSA, arranged debt, managed closing).
+  3. Asset/Strategy Context: Specific property types and strategies.
+  4. Lifecycle: Exposure within the deal (Acquisition → Asset Mgmt → Refi → Disposition).
+  5. Technicals: Models used (DCF, waterfalls), analysis performed.
+  6. Outcomes: Returns (IRR, Equity Multiple), realized vs. unrealized.
+
+Technical Skills (Software)
+• Content: Explicit mentions of Argus (AE), Yardi, MRI, CoStar, Excel (VBA/Macros), Python, Power BI/Tableau.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on real estate market or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Real Estate Investment,2026-01-21
+Tech & Change,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements must be IGNORED and not included in the output.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• Identify the Candidate based on first-person statements.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes (race, ethnicity, religion, etc.).
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate.
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Role Type & Discipline
+• Definition: Primary technical focus (e.g., Software Engineering, DevOps, Product Management, Project/Program Management, Data Engineering, Cyber Security).
+
+Tech Stack (Languages/Cloud)
+• Content: Programming languages (Java, C#, Python, React), Cloud platforms (AWS, Azure, GCP), Databases (SQL, NoSQL), and Frameworks.
+
+Methodologies
+• Content: Agile, Scrum, Kanban, Waterfall, SAFe, DevOps practices, CI/CD.
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role.
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""want to move from hands-on to architecture"", ""seeking greenfield projects"").
+
+Project Scope / Change Experience
+• Content: Digital Transformation, Cloud Migration, ERP Implementation, Legacy modernization. Capture scale (budget, team size, duration).
+
+Management & Leadership
+• Content: Team size managed (direct/indirect), budget responsibility, stakeholder management level (C-Suite exposure).
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on tech trends (e.g., ""GenAI adoption"") or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",IT and Change Management,2026-01-21
+Wealth,"Goal: Extract all relevant information from the transcript into the fields below.
+
+Critical separation rule:
+• Candidate fields must contain ONLY information explicitly stated by the candidate about themselves.
+• Recruiter statements (role, firm, process, comp range for the role) must be IGNORED and not included in the output.
+• If unsure who said something, do not place it into candidate fields.
+
+Speaker handling:
+• Use speaker labels if present.
+• If recruiter_names is provided and a speaker matches it, treat them as recruiter.
+• If a speaker provides long descriptions of a third-party firm, fund strategy, or job opening, identify them as the Recruiter.
+• Identify the Candidate based on first-person statements about background, preferences, constraints, and current situation.
+
+Privacy and sensitivity (strict): Do NOT include protected or sensitive personal attributes anywhere (race, ethnicity, religion, nationality, heritage, etc.), even if spoken. Do not repeat, paraphrase, or hint at them.
+
+No guessing:
+• Do not infer. If not explicitly stated by the correct party, output ""Not stated"".
+
+FIELD EXTRACTION RULES:
+
+Location
+• Content: Candidate's current location and specific constraints.
+
+Open to relocate (locations)
+• Content: List only locations the candidate explicitly says they would relocate to.
+• Validation: If they say they are ""open to relocate"" but do not specify where, output ""Open to relocate - locations not stated"".
+
+Compensation (Current/Recent ONLY)
+• Allowed: Explicit pay stated by the candidate (Base, Bonus, Commission).
+• Disallowed: Recruiter-stated ranges.
+
+Target Comp
+• Content: Candidate explicitly stated desired compensation numbers only.
+
+Specialism / Discipline
+• Content: Primary focus (e.g., Trust Administration, Private Client Tax, Estate Planning, Family Office Services, Fund Administration, Fiduciary Services).
+
+Client Segment Focus
+• Content: Type of clients managed (e.g., UHNW Individuals, Single Family Offices (SFO), Multi-Family Offices (MFO), Corporate/Institutional).
+
+Jurisdictional Experience
+• Definition: Specific legal jurisdictions the candidate works with.
+• Examples: Onshore (US, UK), Offshore (Cayman, BVI, Jersey, Guernsey, Isle of Man, Switzerland, Singapore, HK).
+
+Title
+• Content: Candidate's current or most recent title.
+
+Target Title
+• Content: Candidate explicitly desired title.
+
+Reason for leaving
+• Content: Explicit candidate reason for leaving most recent role (e.g., ""M&A caused uncertainty"", ""want to move in-house to a Family Office"").
+
+Aim for new role
+• Content: Candidate preferences (e.g., ""move from service provider to client side"", ""focus on advisory vs administration"").
+
+Book of Business / AUM
+• Content: Assets Under Administration (AUA), Assets Under Management (AUM), or annual revenue targets handled. Number of families/structures managed.
+
+Technical Expertise & Structures
+• Content: Specific vehicles (Discretionary Trusts, STAR Trusts, PTCs, Foundations), Regulatory knowledge (FATCA, CRS, AML/KYC), Tax planning (domicile/residency rules).
+
+Certifications
+• Content: Explicit mentions of STEP (TEP - Trust & Estate Practitioner), CPA, ACCA, CTA (Chartered Tax Adviser), Law Degree/Bar Admission.
+
+Notice Period
+• Content: Candidate's stated notice period or availability to start.
+
+Currently Interviewing
+• Content: Other companies or processes the candidate mentions they are currently interviewing with.
+
+Additional Insight Rules:
+• Candidate highlights: Summary of candidate-stated experience.
+• Interesting insights: Unique views on wealth trends (e.g., ""next-gen wealth transfer"", ""crypto in trusts"") or personal hooks.
+• Client Context / Sentiment: If a client is present, capture their sentiment. If no client is present, write ""Not stated"".
+• Candidate questions: Questions the candidate asked.
+• Uncertainties: Specific doubts or hesitations the candidate expressed.
+• Conflicts/changes: Instances where the candidate changes their answer.
+• If a section has no data, write ""Not stated"".
+
+Output format rules:
+• Do NOT use bolding for labels.
+• Do NOT use curly braces {} or brackets [] around values.
+• Exactly ONE blank line between fields.
+
+Now parse this transcript:
+{{transcript_text}}
+
+Recruiter names (optional): {{recruiter_names}}
+Candidate names (optional): {{candidate_names}}",Wealth Management / Trust / Private Client,2026-01-21

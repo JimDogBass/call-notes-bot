@@ -577,7 +577,9 @@ def process_single_file(
         logger.info(f"Successfully processed: {filename}")
 
     except Exception as e:
+        import traceback
         logger.error(f"Error processing {filename}: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         log_processing_error(sheets_service, filename, str(e), "process_single_file")
 
 
@@ -594,6 +596,8 @@ def run_once():
     consultants = get_consultants(sheets_service)
     prompts = get_prompts(sheets_service)
     logger.info(f"Loaded {len(consultants)} consultants, {len(prompts)} prompts")
+    if prompts:
+        logger.info(f"Prompt desks: {list(prompts.keys())}")
 
     # Get new files
     files = get_new_pdf_files(drive_service)

@@ -1,0 +1,89 @@
+Desk,PromptTemplate,Description,LastUpdated
+PE_VC,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary, bonus, carry, co-invest (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title at current firm
+**Current Firm Type:** (e.g., Growth Equity, Buyout, VC, Fund of Funds, Placement Agent)
+**AUM/Fund Size:** Assets under management or fund size
+**LP Relationships:** Types of LPs they work with (pensions, endowments, family offices, etc.)
+**Fundraising Experience:** Specific fundraising achievements or campaigns
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Private Equity / VC IR & Fundraising,2025-01-20
+Compliance,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary and bonus (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title
+**Current Firm Type:** (e.g., Asset Manager, Bank, Hedge Fund, Regulator)
+**Regulatory Focus:** FCA, SEC, MiFID, AIFMD, UCITS, etc.
+**Certifications:** CISI, ICA, relevant qualifications
+**Team Size:** If they manage a team
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Compliance and Risk roles,2025-01-20
+Wealth_Trust,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary and bonus (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title
+**Current Firm Type:** (e.g., Private Bank, Trust Company, Family Office, Law Firm)
+**Jurisdictions:** Offshore experience (Jersey, Guernsey, Cayman, BVI, etc.)
+**Qualifications:** STEP, TEP, ICSA, legal qualifications
+**Structures Experience:** Trusts, foundations, companies, partnerships
+**Client Base:** UHNW, HNW, institutional
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Wealth Management and Trust Administration,2025-01-20
+Product_Tech,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary and bonus (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title
+**Current Firm Type:** (e.g., FinTech, Asset Manager, Bank, Startup)
+**Tech Stack:** Technologies, platforms, tools mentioned
+**Team Size:** Number of direct reports or team members
+**Methodologies:** Agile, Scrum, SAFe, etc.
+**Product Focus:** What products they've worked on
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Product Management and Technology,2025-01-20
+Finance,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary and bonus (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title
+**Current Firm Type:** (e.g., Big 4, Asset Manager, Corporate, PE-backed)
+**Qualifications:** ACA, ACCA, CIMA, CPA, CFA
+**Technical Skills:** Financial modelling, consolidations, reporting systems
+**Team Size:** If they manage a team
+**Audit/Industry Experience:** Sectors, audit vs industry split
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Finance and Accounting roles,2025-01-20
+Legal,"Extract the following from this recruitment call transcript. Only include information explicitly stated by the candidate about themselves.
+
+**Location:** Current location and any relocation preferences
+**Current Compensation:** Base salary and bonus (as stated by candidate)
+**Target Compensation:** What they are looking for
+**Current Title:** Job title
+**Current Firm Type:** (e.g., Magic Circle, US Firm, In-house, Boutique)
+**PQE:** Post-qualification experience in years
+**Practice Areas:** Funds, M&A, Banking, Regulatory, Employment, etc.
+**Sectors:** Financial services, PE, Asset Management, FinTech, etc.
+**Qualifications:** Jurisdiction qualified (England & Wales, Scotland, NY Bar, etc.)
+**Reason for Leaving:** Why they want to move
+**Aim for New Role:** What they're looking for in next role
+**Notice Period:** If stated
+**Candidate Highlights:** 2-3 key selling points about this candidate",Legal and In-house Counsel,2025-01-20

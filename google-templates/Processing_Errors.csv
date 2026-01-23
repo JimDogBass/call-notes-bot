@@ -1,0 +1,4 @@
+Filename,Date,ErrorMessage,NodeName,Resolved
+failed_extraction.pdf,2025-01-20,PDF text extraction failed - file corrupted,Extract PDF Text,No
+timeout_example.pdf,2025-01-20,Azure OpenAI request timed out after 120s,OpenAI Chat,No
+teams_delivery.pdf,2025-01-20,Teams API returned 403 - user not found,Send Teams Message,Yes
