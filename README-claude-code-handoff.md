@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 26 Jan 2026 @ 11:00
+**Last Updated:** 26 Jan 2026 @ 14:00
 
 ---
 
@@ -196,16 +196,17 @@ Railway will automatically redeploy.
 
 ## Filename Parsing Logic
 
-Fireflies generates filenames like:
+Fireflies generates filenames in various formats:
 ```
 Lisa Paton [+44 141 648 9417] - +44 7912 748851-transcript-2026-01-23T11-43-55.000Z.pdf
 Scott Eccles [+44 141 846 0530] - +44 7940 704901-transcript-2026-01-23T11-40-38.000Z.pdf
++44 7742 546123 - Jonathan Kearsley [+44 20 4571 7401]-transcript-2026-01-26T13-41-48.000Z.pdf
 ```
 
-**Extraction logic:**
-1. Remove `[PROCESSED]` prefix if present
-2. Split on ` [` or ` - ` to get first segment
-3. Result: "Lisa Paton", "Scott Eccles"
+**Consultant matching:**
+- Uses "contains" lookup - searches for consultant name anywhere in filename
+- Matches longer names first (e.g., "Jonathan Kearsley" before "Jon")
+- Works regardless of filename format or order
 
 ---
 
@@ -345,6 +346,7 @@ To refresh:
 3. **API failures not retried** - Added 3x retry logic with exponential backoff (5s, 10s, 15s)
 4. **KeyError: 'parts'** - Added proper error handling for blocked content / safety filter responses
 5. **MAX_TOKENS error** - Increased `maxOutputTokens` from 2000 to 8000 for long transcripts
+6. **Reversed filename format** - Changed consultant lookup from exact match to "contains" match (finds name anywhere in filename, handles any format)
 
 **Performance Improvements:**
 - Poll interval reduced from 5 minutes to 1 minute (POLL_INTERVAL=60)
@@ -356,6 +358,7 @@ To refresh:
 - Max output tokens: 8000
 - File cutoff: 26 Jan 2026 00:00 UTC (ignores older backlog)
 - Retries: 3 attempts with 5s/10s/15s backoff
+- Consultant lookup: "contains" match (finds name anywhere in filename)
 
 ---
 
