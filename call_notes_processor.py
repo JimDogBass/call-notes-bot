@@ -338,7 +338,7 @@ def call_gemini(prompt_template: str, transcript: str, consultant_name: str = ''
         ],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 2000
+            "maxOutputTokens": 8000
         }
     }
 
