@@ -309,8 +309,9 @@ def count_words(text: str) -> int:
 # GEMINI API (Google AI Studio)
 # ============================================================================
 
-def call_gemini(prompt_template: str, transcript: str, consultant_name: str = '', candidate_name: str = '') -> str:
-    """Call Gemini 2.5 Pro to extract call notes."""
+def call_gemini(prompt_template: str, transcript: str, consultant_name: str = '', candidate_name: str = '', max_retries: int = 3) -> str:
+    """Call Gemini 2.5 Pro to extract call notes with retry logic."""
+    import time
 
     # Build the full prompt
     full_prompt = prompt_template.replace('{{transcript_text}}', transcript)
@@ -341,11 +342,43 @@ def call_gemini(prompt_template: str, transcript: str, consultant_name: str = ''
         }
     }
 
-    response = requests.post(url, headers=headers, json=body, timeout=120)
-    response.raise_for_status()
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, headers=headers, json=body, timeout=120)
+            response.raise_for_status()
 
-    data = response.json()
-    return data['candidates'][0]['content']['parts'][0]['text']
+            data = response.json()
+
+            # Check for blocked content or missing response
+            if 'candidates' not in data or not data['candidates']:
+                block_reason = data.get('promptFeedback', {}).get('blockReason', 'Unknown')
+                raise Exception(f"No candidates in response. Block reason: {block_reason}")
+
+            candidate = data['candidates'][0]
+
+            # Check finish reason
+            finish_reason = candidate.get('finishReason', '')
+            if finish_reason == 'SAFETY':
+                safety_ratings = candidate.get('safetyRatings', [])
+                raise Exception(f"Content blocked by safety filter: {safety_ratings}")
+
+            # Extract text
+            if 'content' not in candidate or 'parts' not in candidate['content']:
+                raise Exception(f"Unexpected response structure: {candidate}")
+
+            return candidate['content']['parts'][0]['text']
+
+        except Exception as e:
+            last_error = e
+            if attempt < max_retries - 1:
+                wait_time = (attempt + 1) * 5  # 5s, 10s, 15s
+                logger.warning(f"Gemini API attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                logger.error(f"Gemini API failed after {max_retries} attempts: {e}")
+
+    raise last_error
 
 
 # ============================================================================
