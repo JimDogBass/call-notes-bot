@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 23 Jan 2026 @ 14:30
+**Last Updated:** 26 Jan 2026 @ 11:00
 
 ---
 
@@ -337,6 +337,26 @@ To refresh:
 - MS_TENANT_ID
 - POLL_INTERVAL
 
+### 26 Jan 2026 - Session 7 (Troubleshooting & Optimization)
+
+**Issues Fixed:**
+1. **Wrong Gemini model name** - Changed from `gemini-2.5-pro-preview-05-06` to `gemini-2.5-pro`
+2. **Files slipping through time window** - Changed from rolling 10-15 min window to fixed cutoff date (26 Jan 2026)
+3. **API failures not retried** - Added 3x retry logic with exponential backoff (5s, 10s, 15s)
+4. **KeyError: 'parts'** - Added proper error handling for blocked content / safety filter responses
+5. **MAX_TOKENS error** - Increased `maxOutputTokens` from 2000 to 8000 for long transcripts
+
+**Performance Improvements:**
+- Poll interval reduced from 5 minutes to 1 minute (POLL_INTERVAL=60)
+- Faster response to new files
+
+**Current Configuration:**
+- Model: Gemini 2.5 Pro
+- Poll interval: 60 seconds
+- Max output tokens: 8000
+- File cutoff: 26 Jan 2026 00:00 UTC (ignores older backlog)
+- Retries: 3 attempts with 5s/10s/15s backoff
+
 ---
 
 ## Monitoring
@@ -345,17 +365,21 @@ To refresh:
 
 **Log Messages:**
 - `Starting processing cycle...` - Poll started
+- `Poll interval: 60 seconds` - Confirms poll setting
 - `Found X new files to process` - Files detected
 - `Extracted X words from FILE` - PDF parsed successfully
+- `Calling Gemini 2.5 Pro for FILE` - AI extraction starting
+- `Gemini API attempt X failed... Retrying` - Transient failure, retrying
 - `Sending Teams message to NAME` - About to send
 - `Message sent to chat` - Delivery confirmed
 - `Renamed file to: [PROCESSED]` - File processed
 - `Logged skipped call: FILE - REASON` - File skipped
 
 **Common Issues:**
-- If no files being processed, check Google Drive folder has new unprocessed PDFs
+- If no files being processed, check Google Drive folder has new unprocessed PDFs (created after 26 Jan 2026)
 - If Teams messages not sending, check MS_REFRESH_TOKEN is valid (1493 chars)
-- If PDF parsing fails, check Railway logs for specific error
+- If Gemini fails repeatedly, check for safety filter blocks or quota limits
+- If MAX_TOKENS error, transcript may be extremely long (current limit: 8000 tokens)
 
 ---
 
