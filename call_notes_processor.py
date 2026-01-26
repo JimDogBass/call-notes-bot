@@ -95,10 +95,10 @@ def get_google_services():
 
 
 def get_new_pdf_files(drive_service) -> list:
-    """Get unprocessed PDF files from Google Drive folder (created in last 10 minutes)."""
-    # Only look at files created in the last 10 minutes (poll interval + buffer)
+    """Get unprocessed PDF files from Google Drive folder (created in last 15 minutes)."""
+    # Only look at files created in the last 15 minutes (poll interval + buffer)
     from datetime import datetime, timedelta, timezone
-    cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+    cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=15)
     cutoff_str = cutoff_time.strftime('%Y-%m-%dT%H:%M:%S')
 
     query = (
