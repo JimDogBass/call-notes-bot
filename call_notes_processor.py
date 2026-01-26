@@ -305,6 +305,24 @@ def count_words(text: str) -> int:
     return len(text.split())
 
 
+def find_consultant_in_filename(filename: str, consultants: Dict[str, Dict]) -> tuple:
+    """
+    Find consultant by checking if their name appears anywhere in the filename.
+    Returns (consultant_dict, consultant_name) or (None, '') if not found.
+    """
+    filename_lower = filename.lower()
+
+    # Sort by name length descending to match longer names first
+    # (e.g., "Jonathan Kearsley" before "Jon")
+    sorted_consultants = sorted(consultants.items(), key=lambda x: len(x[0]), reverse=True)
+
+    for name_key, consultant_data in sorted_consultants:
+        if name_key in filename_lower:
+            return consultant_data, consultant_data['Name']
+
+    return None, ''
+
+
 # ============================================================================
 # GEMINI API (Google AI Studio)
 # ============================================================================
@@ -576,21 +594,20 @@ def process_single_file(
 
         logger.info(f"Extracted {word_count} words from {filename}")
 
-        # 3. Parse filename
+        # 3. Parse filename for metadata
         file_info = parse_filename(filename)
-        consultant_name = file_info['consultantName']
 
         # 4. Word count gate
         if word_count < WORD_COUNT_THRESHOLD:
-            log_skipped_call(sheets_service, filename, word_count, "Too short", consultant_name)
+            log_skipped_call(sheets_service, filename, word_count, "Too short", '')
             rename_processed_file(drive_service, file_id, filename)
             return
 
-        # 5. Lookup consultant
-        consultant = consultants.get(consultant_name.lower())
+        # 5. Find consultant by name anywhere in filename (contains lookup)
+        consultant, consultant_name = find_consultant_in_filename(filename, consultants)
 
         if not consultant:
-            log_skipped_call(sheets_service, filename, word_count, "Unknown consultant", consultant_name)
+            log_skipped_call(sheets_service, filename, word_count, "Unknown consultant", '')
             rename_processed_file(drive_service, file_id, filename)
             return
 
