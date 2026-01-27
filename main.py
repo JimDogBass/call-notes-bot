@@ -8,6 +8,7 @@ import asyncio
 import threading
 import time
 import logging
+from datetime import datetime
 
 # Set up logging first
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,6 +22,11 @@ import json
 from aiohttp import web
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity, ActivityTypes, Attachment, ConversationReference
+
+# Google Sheets for persistent storage
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+import base64
 
 # ============================================================================
 # BOT CONFIGURATION
@@ -39,28 +45,131 @@ ADAPTER = BotFrameworkAdapter(SETTINGS)
 
 # Conversation references for proactive messaging
 CONVERSATION_REFERENCES = {}
-CONV_REF_FILE = "conversation_references.json"
+
+# Google Sheets configuration (same as processor)
+GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "meraki-n8n-automation-66a9d5aafc1e.json")
+GOOGLE_SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "1Z_5rhbhe4lW13t4DKOzhWW-cKLbeyneUHTZXBUmBM-g")
+
+# Sheets service (initialized on first use)
+_sheets_service = None
+
+
+def get_sheets_service():
+    """Get Google Sheets service (singleton)."""
+    global _sheets_service
+    if _sheets_service is None:
+        scopes = ['https://www.googleapis.com/auth/spreadsheets']
+
+        if GOOGLE_SERVICE_ACCOUNT_JSON:
+            json_str = GOOGLE_SERVICE_ACCOUNT_JSON
+            try:
+                json_str = base64.b64decode(json_str).decode('utf-8')
+            except Exception:
+                pass
+            service_account_info = json.loads(json_str)
+            credentials = service_account.Credentials.from_service_account_info(
+                service_account_info, scopes=scopes
+            )
+        else:
+            credentials = service_account.Credentials.from_service_account_file(
+                GOOGLE_SERVICE_ACCOUNT_FILE, scopes=scopes
+            )
+
+        _sheets_service = build('sheets', 'v4', credentials=credentials)
+    return _sheets_service
 
 
 def load_conversation_references():
-    """Load conversation references from file."""
+    """Load conversation references from Google Sheets."""
     global CONVERSATION_REFERENCES
-    if os.path.exists(CONV_REF_FILE):
-        try:
-            with open(CONV_REF_FILE, 'r') as f:
-                CONVERSATION_REFERENCES = json.load(f)
-            logger.info(f"Loaded {len(CONVERSATION_REFERENCES)} conversation references")
-        except Exception as e:
+    try:
+        sheets = get_sheets_service()
+        result = sheets.spreadsheets().values().get(
+            spreadsheetId=GOOGLE_SPREADSHEET_ID,
+            range='ConversationReferences!A:C'
+        ).execute()
+        rows = result.get('values', [])
+
+        if len(rows) > 1:  # Skip header row
+            for row in rows[1:]:
+                if len(row) >= 2:
+                    user_id = row[0]
+                    conv_ref_json = row[1]
+                    try:
+                        CONVERSATION_REFERENCES[user_id] = json.loads(conv_ref_json)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid JSON for user {user_id}")
+
+        logger.info(f"Loaded {len(CONVERSATION_REFERENCES)} conversation references from Google Sheets")
+    except Exception as e:
+        # If sheet doesn't exist yet, that's okay
+        if "Unable to parse range" in str(e) or "not found" in str(e).lower():
+            logger.info("ConversationReferences sheet not found - will be created on first registration")
+        else:
             logger.error(f"Error loading conversation references: {e}")
 
 
-def save_conversation_references():
-    """Save conversation references to file."""
+def save_conversation_reference(user_id: str, conv_ref: dict):
+    """Save a single conversation reference to Google Sheets."""
     try:
-        with open(CONV_REF_FILE, 'w') as f:
-            json.dump(CONVERSATION_REFERENCES, f)
+        sheets = get_sheets_service()
+
+        # First, try to find if user already exists
+        try:
+            result = sheets.spreadsheets().values().get(
+                spreadsheetId=GOOGLE_SPREADSHEET_ID,
+                range='ConversationReferences!A:A'
+            ).execute()
+            rows = result.get('values', [])
+
+            # Find row index for this user (1-indexed, +1 for header)
+            row_index = None
+            for i, row in enumerate(rows):
+                if row and row[0] == user_id:
+                    row_index = i + 1  # 1-indexed
+                    break
+
+            timestamp = datetime.now().isoformat()
+            conv_ref_json = json.dumps(conv_ref)
+
+            if row_index:
+                # Update existing row
+                sheets.spreadsheets().values().update(
+                    spreadsheetId=GOOGLE_SPREADSHEET_ID,
+                    range=f'ConversationReferences!A{row_index}:C{row_index}',
+                    valueInputOption='RAW',
+                    body={'values': [[user_id, conv_ref_json, timestamp]]}
+                ).execute()
+                logger.info(f"Updated conversation reference for user: {user_id}")
+            else:
+                # Append new row
+                sheets.spreadsheets().values().append(
+                    spreadsheetId=GOOGLE_SPREADSHEET_ID,
+                    range='ConversationReferences!A:C',
+                    valueInputOption='RAW',
+                    body={'values': [[user_id, conv_ref_json, timestamp]]}
+                ).execute()
+                logger.info(f"Added new conversation reference for user: {user_id}")
+
+        except Exception as e:
+            if "Unable to parse range" in str(e) or "not found" in str(e).lower():
+                # Sheet doesn't exist, create it with header and first row
+                sheets.spreadsheets().values().append(
+                    spreadsheetId=GOOGLE_SPREADSHEET_ID,
+                    range='ConversationReferences!A:C',
+                    valueInputOption='RAW',
+                    body={'values': [
+                        ['UserAADId', 'ConversationReferenceJSON', 'UpdatedAt'],
+                        [user_id, json.dumps(conv_ref), datetime.now().isoformat()]
+                    ]}
+                ).execute()
+                logger.info(f"Created ConversationReferences sheet and added user: {user_id}")
+            else:
+                raise
+
     except Exception as e:
-        logger.error(f"Error saving conversation references: {e}")
+        logger.error(f"Error saving conversation reference: {e}")
 
 
 def add_conversation_reference(activity: Activity):
@@ -68,8 +177,11 @@ def add_conversation_reference(activity: Activity):
     conv_ref = TurnContext.get_conversation_reference(activity)
     user_id = conv_ref.user.aad_object_id or conv_ref.user.id
 
-    CONVERSATION_REFERENCES[user_id] = conv_ref.as_dict()
-    save_conversation_references()
+    conv_ref_dict = conv_ref.as_dict()
+    CONVERSATION_REFERENCES[user_id] = conv_ref_dict
+
+    # Save to Google Sheets (persistent storage)
+    save_conversation_reference(user_id, conv_ref_dict)
 
     logger.info(f"Stored conversation reference for user: {user_id}")
     return user_id
