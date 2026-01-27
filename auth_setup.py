@@ -14,7 +14,7 @@ MS_TENANT_ID = os.environ.get("MS_TENANT_ID", "")
 MS_CLIENT_ID = os.environ.get("MS_CLIENT_ID", "")
 MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET", "")
 REDIRECT_URI = "http://localhost:8765/callback"
-SCOPES = "Chat.Create ChatMessage.Send User.Read offline_access"
+SCOPES = "Chat.Create ChatMessage.Send ChannelMessage.Send Channel.Create Channel.ReadBasic.All Team.Create Team.ReadBasic.All ChannelMember.ReadWrite.All User.Read offline_access"
 
 
 class CallbackHandler(BaseHTTPRequestHandler):

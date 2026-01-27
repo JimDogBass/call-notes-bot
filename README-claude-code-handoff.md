@@ -112,6 +112,7 @@ Set these in Railway dashboard:
 | `MS_CLIENT_SECRET` | (see CREDENTIALS.md) | Azure app client secret |
 | `MS_REFRESH_TOKEN` | (see CREDENTIALS.md) | Microsoft OAuth2 refresh token (1493 chars) |
 | `JOEL_AAD_ID` | `5882d2ec-5fcc-48be-bea3-dbbd7020d6ea` | Joel's Azure AD user ID |
+| `TEAM_ID` | (run setup_channels.py) | Teams team ID for private channels |
 | `POLL_INTERVAL` | `300` | Seconds between polls (5 minutes) |
 
 ### Base64 Encoding for Google Service Account
@@ -162,6 +163,7 @@ Railway will automatically redeploy.
 | Desk | PE_VC, Compliance, Wealth_Trust, Product_Tech, Finance, Legal |
 | TeamsUserId | Microsoft 365 user object ID |
 | Active | TRUE or FALSE |
+| ChannelId | Teams private channel ID (populated by setup_channels.py) |
 
 ### 2. Prompts (sheet)
 
@@ -251,6 +253,7 @@ Prompts are managed in Google Sheets and can be updated anytime without redeploy
 |------|---------|
 | `call_notes_processor.py` | Main processor script with polling loop |
 | `auth_setup.py` | One-time OAuth2 setup for Microsoft Graph (local use) |
+| `setup_channels.py` | One-time script to create Team and private channels |
 | `requirements.txt` | Python dependencies |
 | `Procfile` | Railway deployment configuration |
 | `.gitignore` | Excludes credentials and temp files |
@@ -386,26 +389,61 @@ To refresh:
 
 ---
 
-## Planned: Private Channels per Consultant
+## Private Channels per Consultant
 
-**Status:** Scheduled for implementation
+**Status:** IMPLEMENTED
 
-**Current:** Messages sent as 1:1 chats from Joel to each consultant
-
-**Planned:** Post to private Teams channels for better persistence and searchability
-
-**Implementation steps:**
-1. Create a "Call Notes Bot" Team in Microsoft Teams
-2. Create a private channel for each consultant (script or manual)
-3. Add `ChannelId` column to Consultants Google Sheet
-4. Update code to post to channel instead of 1:1 chat
-5. Test notifications and card rendering in channels
+**Current:** Messages posted to private Teams channels (with 1:1 chat fallback)
 
 **Benefits:**
 - Notes persist in searchable channel history
 - Consultants get notifications
-- Private to each consultant
+- Private to each consultant (they are channel owners)
+- Consultants can add their manager/teammates to their channel
 - Easier to reference past calls
+
+### Setup Instructions
+
+**1. Add ChannelId column to Google Sheet:**
+- Open the Consultants sheet
+- Add "ChannelId" as header in column F
+
+**2. Re-authenticate with new permissions:**
+```bash
+cd "C:\Projects\n8n Call Notes"
+python auth_setup.py
+# Sign in as Joel - consent to new channel permissions
+```
+
+**3. Run channel setup script:**
+```bash
+python setup_channels.py
+```
+This will:
+- Create "Call Notes" Team (or use existing)
+- Create private channel for each active consultant
+- Add consultant as channel owner
+- Save channel IDs to Google Sheet
+- Send welcome message to each channel
+
+**4. Add TEAM_ID to Railway:**
+- Copy the Team ID from `team_id.txt` (or script output)
+- Add `TEAM_ID` environment variable in Railway dashboard
+
+**5. Deploy:**
+```bash
+git add . && git commit -m "Add private channels support" && git push
+```
+
+### Fallback Behavior
+
+If a consultant has no ChannelId or TEAM_ID is not set, the system falls back to 1:1 chat (original behavior).
+
+### Adding New Consultants
+
+When adding a new consultant:
+1. Add them to Google Sheet with TeamsUserId
+2. Run `setup_channels.py` again - it will only create channels for consultants without one
 
 ---
 

@@ -1,1 +1,1 @@
-worker: python call_notes_processor.py
+web: python main.py

@@ -43,6 +43,7 @@ MS_CLIENT_ID = os.environ.get("MS_CLIENT_ID", "")
 MS_CLIENT_SECRET = os.environ.get("MS_CLIENT_SECRET", "")
 MS_REFRESH_TOKEN = os.environ.get("MS_REFRESH_TOKEN", "")
 JOEL_AAD_ID = os.environ.get("JOEL_AAD_ID", "")
+TEAM_ID = os.environ.get("TEAM_ID", "")  # Teams team ID for private channels
 
 # Processing
 WORD_COUNT_THRESHOLD = int(os.environ.get("WORD_COUNT_THRESHOLD", "300"))
@@ -139,7 +140,7 @@ def get_consultants(sheets_service) -> Dict[str, Dict]:
     """Load consultants from Google Sheets."""
     result = sheets_service.spreadsheets().values().get(
         spreadsheetId=GOOGLE_SPREADSHEET_ID,
-        range='Consultants!A:E'
+        range='Consultants!A:F'  # Extended to include ChannelId column
     ).execute()
     rows = result.get('values', [])
 
@@ -150,14 +151,15 @@ def get_consultants(sheets_service) -> Dict[str, Dict]:
     consultants = {}
 
     for row in rows[1:]:
-        if len(row) >= 5:
+        if len(row) >= 4:
             name = row[0].strip()
             consultants[name.lower()] = {
                 'Name': name,
                 'Email': row[1] if len(row) > 1 else '',
                 'Desk': row[2] if len(row) > 2 else '',
                 'TeamsUserId': row[3] if len(row) > 3 else '',
-                'Active': row[4].upper() == 'TRUE' if len(row) > 4 else False
+                'Active': row[4].upper() == 'TRUE' if len(row) > 4 else False,
+                'ChannelId': row[5] if len(row) > 5 else ''
             }
 
     return consultants
@@ -445,7 +447,7 @@ class GraphAPIClient:
             'client_secret': MS_CLIENT_SECRET,
             'refresh_token': self.refresh_token,
             'grant_type': 'refresh_token',
-            'scope': 'Chat.Create ChatMessage.Send User.Read offline_access'
+            'scope': 'Chat.Create ChatMessage.Send ChannelMessage.Send User.Read offline_access'
         }
 
         response = requests.post(url, data=data)
@@ -527,6 +529,35 @@ class GraphAPIClient:
         response.raise_for_status()
 
         logger.info(f"Message sent to chat {chat_id}")
+
+    def send_channel_adaptive_card(self, team_id: str, channel_id: str, card: dict, fallback_text: str = "Call Notes"):
+        """Send an adaptive card to a Teams channel."""
+        url = f"https://graph.microsoft.com/v1.0/teams/{team_id}/channels/{channel_id}/messages"
+
+        headers = {
+            'Authorization': f'Bearer {self.get_access_token()}',
+            'Content-Type': 'application/json'
+        }
+
+        body = {
+            "body": {
+                "contentType": "html",
+                "content": '<attachment id="ac1"></attachment>'
+            },
+            "attachments": [
+                {
+                    "id": "ac1",
+                    "contentType": "application/vnd.microsoft.card.adaptive",
+                    "contentUrl": None,
+                    "content": json.dumps(card)
+                }
+            ]
+        }
+
+        response = requests.post(url, headers=headers, json=body)
+        response.raise_for_status()
+
+        logger.info(f"Message sent to channel {channel_id}")
 
 
 def build_adaptive_card(candidate_name: str, call_date: str, notes: str, filename: str) -> dict:
@@ -618,9 +649,10 @@ def process_single_file(
 
         teams_user_id = consultant['TeamsUserId']
         desk = consultant['Desk']
+        channel_id = consultant.get('ChannelId', '')
 
-        if not teams_user_id:
-            log_skipped_call(sheets_service, filename, word_count, "No TeamsUserId", consultant_name)
+        if not teams_user_id and not channel_id:
+            log_skipped_call(sheets_service, filename, word_count, "No TeamsUserId or ChannelId", consultant_name)
             rename_processed_file(drive_service, file_id, filename)
             return
 
@@ -647,10 +679,16 @@ def process_single_file(
             filename
         )
 
-        # 9. Send Teams message
-        logger.info(f"Sending Teams message to {consultant_name} ({teams_user_id})")
-        chat_id = graph_client.create_chat(teams_user_id)
-        graph_client.send_adaptive_card(chat_id, card)
+        # 9. Send Teams message (prefer channel, fall back to 1:1 chat)
+        if channel_id and TEAM_ID:
+            # Post to private channel
+            logger.info(f"Sending to private channel for {consultant_name}")
+            graph_client.send_channel_adaptive_card(TEAM_ID, channel_id, card)
+        else:
+            # Fall back to 1:1 chat
+            logger.info(f"Sending 1:1 chat to {consultant_name} ({teams_user_id})")
+            chat_id = graph_client.create_chat(teams_user_id)
+            graph_client.send_adaptive_card(chat_id, card)
 
         # 10. Rename processed file
         rename_processed_file(drive_service, file_id, filename)
