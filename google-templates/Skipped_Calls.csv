@@ -1,4 +1,0 @@
-Filename,Date,WordCount,Reason,ConsultantName
-example_transcript.pdf,2025-01-20,125,Word count below threshold (300),John Smith
-unknown_caller.pdf,2025-01-20,450,Unknown consultant,
-inactive_user.pdf,2025-01-20,800,Inactive consultant,Jane Doe
