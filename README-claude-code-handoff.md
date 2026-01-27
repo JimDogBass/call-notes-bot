@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 27 Jan 2026 @ 16:30
+**Last Updated:** 27 Jan 2026 @ 17:00
 
 ---
 
@@ -350,6 +350,11 @@ Lisa Paton [+44 141 648 9417] - +44 7912 748851-transcript-2026-01-23T11-43-55.0
 - Messages appear in Chat from "Christina" (not from Joel)
 - Consultants must register by messaging Christina once
 - Unregistered users logged to Skipped_Calls
+
+**Status: FULLY DEPLOYED AND WORKING**
+- End-to-end tested with Ayman Waren
+- Real call notes delivered successfully via Christina
+- Deployment email sent to team for onboarding
 
 ---
 
