@@ -110,10 +110,46 @@ def load_conversation_references():
             logger.error(f"Error loading conversation references: {e}")
 
 
+def create_conversation_references_sheet(sheets):
+    """Create the ConversationReferences sheet if it doesn't exist."""
+    try:
+        # Try to add a new sheet
+        sheets.spreadsheets().batchUpdate(
+            spreadsheetId=GOOGLE_SPREADSHEET_ID,
+            body={
+                'requests': [{
+                    'addSheet': {
+                        'properties': {
+                            'title': 'ConversationReferences'
+                        }
+                    }
+                }]
+            }
+        ).execute()
+
+        # Add header row
+        sheets.spreadsheets().values().update(
+            spreadsheetId=GOOGLE_SPREADSHEET_ID,
+            range='ConversationReferences!A1:C1',
+            valueInputOption='RAW',
+            body={'values': [['UserAADId', 'ConversationReferenceJSON', 'UpdatedAt']]}
+        ).execute()
+
+        logger.info("Created ConversationReferences sheet")
+        return True
+    except Exception as e:
+        if "already exists" in str(e).lower():
+            return True  # Sheet already exists, that's fine
+        logger.error(f"Error creating sheet: {e}")
+        return False
+
+
 def save_conversation_reference(user_id: str, conv_ref: dict):
     """Save a single conversation reference to Google Sheets."""
     try:
         sheets = get_sheets_service()
+        timestamp = datetime.now().isoformat()
+        conv_ref_json = json.dumps(conv_ref)
 
         # First, try to find if user already exists
         try:
@@ -123,15 +159,12 @@ def save_conversation_reference(user_id: str, conv_ref: dict):
             ).execute()
             rows = result.get('values', [])
 
-            # Find row index for this user (1-indexed, +1 for header)
+            # Find row index for this user (1-indexed)
             row_index = None
             for i, row in enumerate(rows):
                 if row and row[0] == user_id:
                     row_index = i + 1  # 1-indexed
                     break
-
-            timestamp = datetime.now().isoformat()
-            conv_ref_json = json.dumps(conv_ref)
 
             if row_index:
                 # Update existing row
@@ -153,18 +186,18 @@ def save_conversation_reference(user_id: str, conv_ref: dict):
                 logger.info(f"Added new conversation reference for user: {user_id}")
 
         except Exception as e:
-            if "Unable to parse range" in str(e) or "not found" in str(e).lower():
-                # Sheet doesn't exist, create it with header and first row
-                sheets.spreadsheets().values().append(
-                    spreadsheetId=GOOGLE_SPREADSHEET_ID,
-                    range='ConversationReferences!A:C',
-                    valueInputOption='RAW',
-                    body={'values': [
-                        ['UserAADId', 'ConversationReferenceJSON', 'UpdatedAt'],
-                        [user_id, json.dumps(conv_ref), datetime.now().isoformat()]
-                    ]}
-                ).execute()
-                logger.info(f"Created ConversationReferences sheet and added user: {user_id}")
+            error_str = str(e).lower()
+            if "unable to parse range" in error_str or "not found" in error_str:
+                # Sheet doesn't exist, create it first
+                if create_conversation_references_sheet(sheets):
+                    # Now append the data
+                    sheets.spreadsheets().values().append(
+                        spreadsheetId=GOOGLE_SPREADSHEET_ID,
+                        range='ConversationReferences!A:C',
+                        valueInputOption='RAW',
+                        body={'values': [[user_id, conv_ref_json, timestamp]]}
+                    ).execute()
+                    logger.info(f"Added user to new ConversationReferences sheet: {user_id}")
             else:
                 raise
 
