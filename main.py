@@ -125,11 +125,11 @@ async def on_turn(turn_context: TurnContext):
 # PROACTIVE MESSAGING
 # ============================================================================
 
-async def send_proactive_card(user_aad_id: str, card: dict) -> bool:
-    """Send an adaptive card to a user proactively."""
+async def send_proactive_card(user_aad_id: str, card: dict) -> tuple:
+    """Send an adaptive card to a user proactively. Returns (success, error_message)."""
     if user_aad_id not in CONVERSATION_REFERENCES:
         logger.warning(f"No conversation reference for user: {user_aad_id}")
-        return False
+        return False, "User not registered"
 
     conv_ref_dict = CONVERSATION_REFERENCES[user_aad_id]
 
@@ -148,10 +148,10 @@ async def send_proactive_card(user_aad_id: str, card: dict) -> bool:
         conv_ref = ConversationReference().from_dict(conv_ref_dict)
         await ADAPTER.continue_conversation(conv_ref, callback, BOT_APP_ID)
         logger.info(f"Sent proactive card to user: {user_aad_id}")
-        return True
+        return True, None
     except Exception as e:
         logger.error(f"Error sending proactive message: {e}")
-        return False
+        return False, str(e)
 
 
 # ============================================================================
@@ -188,12 +188,12 @@ async def api_send_note(req: web.Request) -> web.Response:
         if not user_aad_id or not card:
             return web.json_response({"error": "user_aad_id and card required"}, status=400)
 
-        success = await send_proactive_card(user_aad_id, card)
+        success, error = await send_proactive_card(user_aad_id, card)
 
         if success:
             return web.json_response({"status": "sent"})
         else:
-            return web.json_response({"error": "User not registered"}, status=404)
+            return web.json_response({"error": error}, status=404)
 
     except Exception as e:
         logger.error(f"Error in api_send_note: {e}")
