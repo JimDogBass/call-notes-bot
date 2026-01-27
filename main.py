@@ -33,6 +33,7 @@ BOT_TENANT_ID = os.environ.get("BOT_TENANT_ID", "0591f50e-b7a3-41d0-a0b1-b26a2df
 SETTINGS = BotFrameworkAdapterSettings(
     app_id=BOT_APP_ID,
     app_password=BOT_APP_PASSWORD,
+    channel_auth_tenant=BOT_TENANT_ID,  # Required for single tenant bots
 )
 ADAPTER = BotFrameworkAdapter(SETTINGS)
 
