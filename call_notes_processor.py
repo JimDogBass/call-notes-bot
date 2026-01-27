@@ -597,13 +597,48 @@ def build_adaptive_card(candidate_name: str, call_date: str, notes: str, filenam
 
 
 # ============================================================================
+# CHRISTINA BOT DELIVERY
+# ============================================================================
+
+def send_via_christina(user_aad_id: str, card: dict, consultant_name: str) -> bool:
+    """Send call notes via Christina bot proactive messaging."""
+    PORT = os.environ.get("PORT", "3978")
+    BOT_URL = os.environ.get("BOT_URL", f"http://localhost:{PORT}")
+
+    try:
+        response = requests.post(
+            f"{BOT_URL}/api/send-note",
+            json={
+                "user_aad_id": user_aad_id,
+                "card": card
+            },
+            timeout=30
+        )
+
+        if response.status_code == 200:
+            logger.info(f"Sent via Christina to {consultant_name} ({user_aad_id})")
+            return True
+        elif response.status_code == 404:
+            error = response.json().get('error', 'Unknown error')
+            logger.warning(f"Christina delivery failed for {consultant_name}: {error}")
+            logger.warning(f"User may need to message Christina to register")
+            return False
+        else:
+            logger.error(f"Christina API error: {response.status_code} - {response.text}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error sending via Christina: {e}")
+        return False
+
+
+# ============================================================================
 # MAIN PROCESSOR
 # ============================================================================
 
 def process_single_file(
     drive_service,
     sheets_service,
-    graph_client: GraphAPIClient,
     file: dict,
     consultants: dict,
     prompts: dict
@@ -649,10 +684,9 @@ def process_single_file(
 
         teams_user_id = consultant['TeamsUserId']
         desk = consultant['Desk']
-        channel_id = consultant.get('ChannelId', '')
 
-        if not teams_user_id and not channel_id:
-            log_skipped_call(sheets_service, filename, word_count, "No TeamsUserId or ChannelId", consultant_name)
+        if not teams_user_id:
+            log_skipped_call(sheets_service, filename, word_count, "No TeamsUserId", consultant_name)
             rename_processed_file(drive_service, file_id, filename)
             return
 
@@ -679,16 +713,13 @@ def process_single_file(
             filename
         )
 
-        # 9. Send Teams message (prefer channel, fall back to 1:1 chat)
-        if channel_id and TEAM_ID:
-            # Post to private channel
-            logger.info(f"Sending to private channel for {consultant_name}")
-            graph_client.send_channel_adaptive_card(TEAM_ID, channel_id, card)
-        else:
-            # Fall back to 1:1 chat
-            logger.info(f"Sending 1:1 chat to {consultant_name} ({teams_user_id})")
-            chat_id = graph_client.create_chat(teams_user_id)
-            graph_client.send_adaptive_card(chat_id, card)
+        # 9. Send via Christina bot
+        success = send_via_christina(teams_user_id, card, consultant_name)
+
+        if not success:
+            log_skipped_call(sheets_service, filename, word_count, "Christina delivery failed - user not registered", consultant_name)
+            rename_processed_file(drive_service, file_id, filename)
+            return
 
         # 10. Rename processed file
         rename_processed_file(drive_service, file_id, filename)
@@ -709,7 +740,6 @@ def run_once():
 
     # Initialize services
     drive_service, sheets_service = get_google_services()
-    graph_client = GraphAPIClient()
 
     # Load configuration from sheets (refreshed each cycle)
     consultants = get_consultants(sheets_service)
@@ -734,7 +764,6 @@ def run_once():
             process_single_file(
                 drive_service,
                 sheets_service,
-                graph_client,
                 file,
                 consultants,
                 prompts
