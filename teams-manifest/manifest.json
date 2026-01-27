@@ -1,0 +1,43 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.1.0",
+  "id": "5e5ed2ce-14d5-46b8-93d5-0a473f3cd88c",
+  "packageName": "com.merakitalent.callnotes",
+  "developer": {
+    "name": "Meraki Talent",
+    "websiteUrl": "https://merakitalent.com",
+    "privacyUrl": "https://merakitalent.com/privacy",
+    "termsOfUseUrl": "https://merakitalent.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Christina",
+    "full": "Christina - Call Notes Assistant"
+  },
+  "description": {
+    "short": "Automated call summaries for recruiters",
+    "full": "Christina automatically extracts key candidate information from your recruitment call transcripts and delivers structured summaries directly to you in Teams."
+  },
+  "accentColor": "#5558AF",
+  "bots": [
+    {
+      "botId": "5e5ed2ce-14d5-46b8-93d5-0a473f3cd88c",
+      "scopes": [
+        "personal"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "*.railway.app"
+  ]
+}
