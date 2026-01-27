@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 27 Jan 2026 @ 16:30
+**Last Updated:** 27 Jan 2026 @ 16:00
 
 ---
 
@@ -317,15 +317,38 @@ Lisa Paton [+44 141 648 9417] - +44 7912 748851-transcript-2026-01-23T11-43-55.0
 - [x] Created Teams app manifest and icons
 - [x] Deployed and tested proactive messaging
 - [x] Messages now appear in Chat from "Christina" bot
+- [x] Persistent conversation storage in Google Sheets
+- [x] First successful test with Ayman Waren
 
 **Configuration:**
 - Bot App ID: `5e5ed2ce-14d5-46b8-93d5-0a473f3cd88c`
 - Messaging Endpoint: `https://call-notes-bot-production.up.railway.app/api/messages`
 - Teams App: `christina-bot.zip`
 
-**Storage:**
+**Persistent Storage:**
 - Conversation references stored in Google Sheets (ConversationReferences sheet)
-- Users only need to register once - survives redeployments
+- Sheet created automatically on first user registration
+- Users only need to register once - survives all redeployments
+- Tested: Ayman Waren registered and received test messages successfully
+
+---
+
+## Troubleshooting Skipped Calls
+
+Check the `Skipped_Calls` sheet for logged issues:
+
+| Reason | Cause | Action |
+|--------|-------|--------|
+| Too short | < 300 words | Expected - voicemails, brief calls |
+| Unknown consultant | Name not found in Consultants sheet | Add consultant to sheet, or check spelling |
+| Inactive consultant | Consultant marked FALSE in Active column | Set Active to TRUE |
+| No TeamsUserId | Consultant has no Teams ID | Add their AAD Object ID |
+
+**To reprocess a skipped file:**
+1. Go to Google Drive folder
+2. Find the file (has `[PROCESSED]` prefix)
+3. Remove the `[PROCESSED]` prefix from filename
+4. Processor will pick it up on next cycle
 
 ---
 
