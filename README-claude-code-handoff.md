@@ -7,7 +7,7 @@ Automated extraction of structured candidate information from recruitment call t
 **Owner:** Joel @ Meraki Talent
 **Status:** DEPLOYED AND WORKING on Railway
 **Date:** January 2026
-**Last Updated:** 27 Jan 2026 @ 16:00
+**Last Updated:** 27 Jan 2026 @ 16:30
 
 ---
 
@@ -42,9 +42,11 @@ python main.py
 3. Parses consultant name from filename
 4. Looks up consultant info + desk-specific prompt from Google Sheets
 5. Calls Gemini 2.5 Pro to extract structured call notes
-6. Sends Adaptive Card to consultant via **Christina bot** (proactive messaging)
+6. Sends Adaptive Card via **Christina bot** (messages appear in Chat from "Christina")
 7. Renames processed files with `[PROCESSED]` prefix
-8. Logs skipped calls (short transcripts, unknown consultants) to Google Sheets
+8. Logs skipped calls (short transcripts, unknown consultants, unregistered users) to Google Sheets
+
+**Note:** Consultants must message Christina once to register before receiving notes.
 
 ---
 
@@ -89,7 +91,7 @@ Build Adaptive Card
     |
     v
 Christina Bot --> Proactive message to consultant's Chat
-    |
+    |                (user must be registered)
     v
 Rename file to [PROCESSED] prefix
 ```
@@ -126,15 +128,27 @@ Rename file to [PROCESSED] prefix
 | `/api/users` | GET | List registered users |
 | `/health` | GET | Health check |
 
-### Registering Users
+### Registering Users (Required)
 
-Users must message Christina once to register for proactive messaging:
-1. Install Christina app in Teams
+**All consultants must register with Christina to receive call notes.**
+
+1. Install Christina app in Teams (from "Built for your org" section)
 2. Open chat with Christina
 3. Send "hi" or any message
-4. User is now registered and will receive call notes
+4. User is now registered and will receive all future call notes
 
-**Note:** Conversation references are stored in Google Sheets (ConversationReferences sheet) - users only need to register once and will survive redeployments.
+**Note:** Registration is stored in Google Sheets (ConversationReferences sheet) - users only need to register once and will survive redeployments.
+
+### Onboarding Message Template
+
+Send this to your team:
+
+> Hi team! We've set up automated call notes. To receive your call summaries:
+> 1. Open Teams and go to Apps
+> 2. Find "Christina" under "Built for your org"
+> 3. Click Open and send "hi"
+>
+> That's it! You'll now receive call notes automatically in your Chat from Christina.
 
 ---
 
@@ -331,6 +345,12 @@ Lisa Paton [+44 141 648 9417] - +44 7912 748851-transcript-2026-01-23T11-43-55.0
 - Users only need to register once - survives all redeployments
 - Tested: Ayman Waren registered and received test messages successfully
 
+**Christina-Only Delivery:**
+- All messages now sent via Christina bot (not Graph API)
+- Messages appear in Chat from "Christina" (not from Joel)
+- Consultants must register by messaging Christina once
+- Unregistered users logged to Skipped_Calls
+
 ---
 
 ## Troubleshooting Skipped Calls
@@ -343,6 +363,7 @@ Check the `Skipped_Calls` sheet for logged issues:
 | Unknown consultant | Name not found in Consultants sheet | Add consultant to sheet, or check spelling |
 | Inactive consultant | Consultant marked FALSE in Active column | Set Active to TRUE |
 | No TeamsUserId | Consultant has no Teams ID | Add their AAD Object ID |
+| Christina delivery failed | User hasn't registered with Christina | User must message Christina to register |
 
 **To reprocess a skipped file:**
 1. Go to Google Drive folder
