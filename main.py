@@ -354,13 +354,16 @@ async def api_list_users(req: web.Request) -> web.Response:
     })
 
 
+_START_TIME = datetime.now().isoformat()
+
 async def health(req: web.Request) -> web.Response:
     """Health check endpoint."""
     return web.json_response({
         "status": "healthy",
         "bot_id": BOT_APP_ID,
         "registered_users": len(CONVERSATION_REFERENCES),
-        "processor": "running"
+        "processor": "running",
+        "started_at": _START_TIME,
     })
 
 
