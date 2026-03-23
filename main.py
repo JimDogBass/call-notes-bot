@@ -1,6 +1,8 @@
 """
-Christina Call Notes - Combined Bot Server + Processor
-Runs the bot web server and the PDF processor in the same process.
+Christina Call Notes - Combined Bot Server + Aircall Webhook Handler
+Runs the bot web server and processes Aircall call.ended webhooks.
+
+Updated March 2026: Replaced Google Drive polling with Aircall webhook input.
 """
 
 import os
@@ -14,8 +16,9 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Import the processor module
+# Import modules
 import call_notes_processor as processor
+import aircall_handler
 
 # Bot server imports
 import json
@@ -301,6 +304,80 @@ async def send_proactive_card(user_aad_id: str, card: dict) -> tuple:
 
 
 # ============================================================================
+# AIRCALL WEBHOOK PROCESSING (background thread)
+# ============================================================================
+
+def process_aircall_call(call_meta: dict):
+    """
+    Background worker: download recording, transcribe, run through Gemini pipeline.
+    Called in a separate thread so the webhook can return 200 immediately.
+    """
+    call_id = call_meta["call_id"]
+    source_label = f"Aircall call {call_id}"
+
+    try:
+        # 1. Initialize Google Sheets
+        sheets_service = processor.get_google_services()
+
+        # 2. Load consultants
+        consultants = processor.get_consultants(sheets_service)
+        logger.info(f"Loaded {len(consultants)} consultants")
+
+        # 3. Find consultant by Aircall user ID first, then by name
+        consultant, consultant_name = processor.find_consultant_by_aircall_id(
+            call_meta["aircall_user_id"], consultants
+        )
+
+        if not consultant and call_meta["user_name"]:
+            consultant, consultant_name = processor.find_consultant_by_name(
+                call_meta["user_name"], consultants
+            )
+
+        if not consultant:
+            logger.warning(f"No consultant found for Aircall user {call_meta['aircall_user_id']} "
+                           f"({call_meta['user_name']}) — skipping call {call_id}")
+            processor.log_skipped_call(
+                sheets_service, source_label, 0,
+                f"Unknown consultant (Aircall ID: {call_meta['aircall_user_id']}, name: {call_meta['user_name']})"
+            )
+            return
+
+        logger.info(f"Matched consultant: {consultant_name} (desk: {consultant['Desk']})")
+
+        # 4. Download recording
+        audio_content = aircall_handler.download_recording(call_meta["recording_url"])
+
+        # 5. Transcribe
+        logger.info(f"Transcribing call {call_id}...")
+        transcript = aircall_handler.transcribe_audio(audio_content)
+        logger.info(f"Transcription complete: {processor.count_words(transcript)} words")
+
+        # 6. Determine candidate name — use contact name, fall back to phone number
+        candidate_name = call_meta["contact_name"] or call_meta["caller_number"] or "Unknown caller"
+
+        # 7. Hand off to the shared Gemini + delivery pipeline
+        processor.process_transcript(
+            transcript=transcript,
+            consultant=consultant,
+            consultant_name=consultant_name,
+            candidate_name=candidate_name,
+            call_date=call_meta["call_date"],
+            source_label=source_label,
+            sheets_service=sheets_service,
+        )
+
+    except Exception as e:
+        import traceback
+        logger.error(f"Error processing Aircall call {call_id}: {e}")
+        logger.error(traceback.format_exc())
+        try:
+            sheets_service = processor.get_google_services()
+            processor.log_processing_error(sheets_service, source_label, str(e), "process_aircall_call")
+        except Exception:
+            pass
+
+
+# ============================================================================
 # WEB ROUTES
 # ============================================================================
 
@@ -322,6 +399,59 @@ async def messages(req: web.Request) -> web.Response:
     except Exception as e:
         logger.error(f"Error processing activity: {e}")
         return web.Response(status=500, text=str(e))
+
+
+async def aircall_webhook(req: web.Request) -> web.Response:
+    """
+    Handle Aircall call.ended webhook events.
+
+    Flow:
+    1. Validate the webhook payload
+    2. Extract call metadata (recording URL, user ID, caller info)
+    3. Return 200 immediately (Aircall expects fast response)
+    4. Process in background thread (download → transcribe → Gemini → Teams)
+    """
+    try:
+        # Read raw body for signature verification
+        raw_body = await req.read()
+
+        # Verify webhook signature if configured
+        signature = req.headers.get("X-Aircall-Signature", "")
+        if not aircall_handler.verify_webhook_signature(raw_body, signature):
+            logger.warning("Aircall webhook signature verification failed")
+            return web.Response(status=401, text="Invalid signature")
+
+        payload = json.loads(raw_body)
+
+        # Parse the webhook payload
+        call_meta = aircall_handler.parse_webhook_payload(payload)
+
+        if call_meta is None:
+            # Not a call.ended event or no recording — acknowledged but ignored
+            return web.json_response({"status": "ignored"}, status=200)
+
+        logger.info(
+            f"Aircall webhook received: call {call_meta['call_id']} "
+            f"from {call_meta['caller_number']} "
+            f"(user: {call_meta['user_name']}, duration: {call_meta['duration']}s)"
+        )
+
+        # Process in background thread so we can return 200 fast
+        thread = threading.Thread(
+            target=process_aircall_call,
+            args=(call_meta,),
+            daemon=True,
+        )
+        thread.start()
+
+        return web.json_response({"status": "accepted", "call_id": call_meta["call_id"]}, status=200)
+
+    except json.JSONDecodeError:
+        logger.error("Aircall webhook: invalid JSON")
+        return web.Response(status=400, text="Invalid JSON")
+    except Exception as e:
+        logger.error(f"Aircall webhook error: {e}")
+        return web.Response(status=500, text="Internal error")
 
 
 async def api_send_note(req: web.Request) -> web.Response:
@@ -362,28 +492,30 @@ async def health(req: web.Request) -> web.Response:
         "status": "healthy",
         "bot_id": BOT_APP_ID,
         "registered_users": len(CONVERSATION_REFERENCES),
-        "processor": "running",
+        "input_source": "aircall_webhooks",
         "started_at": _START_TIME,
     })
 
 
 # ============================================================================
-# PROCESSOR INTEGRATION
+# DEPRECATED — Google Drive Processor Loop
+# The polling loop is no longer needed since Aircall pushes events via webhook.
+# Retained here for rollback reference.
 # ============================================================================
-
+"""
 def run_processor_loop():
-    """Run the PDF processor in a loop (background thread)."""
     POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', 60))
-
     logger.info(f"Starting processor loop (interval: {POLL_INTERVAL}s)")
-
     while True:
         try:
             processor.run_once()
         except Exception as e:
             logger.error(f"Error in processor: {e}")
-
         time.sleep(POLL_INTERVAL)
+"""
+# ============================================================================
+# END DEPRECATED
+# ============================================================================
 
 
 # ============================================================================
@@ -398,25 +530,23 @@ def main():
     logger.info("Christina Call Notes - Starting")
     logger.info(f"Bot App ID: {BOT_APP_ID}")
     logger.info(f"Port: {PORT}")
+    logger.info(f"Input source: Aircall webhooks")
     logger.info("=" * 60)
 
     # Load conversation references
     load_conversation_references()
 
-    # Start processor in background thread
-    processor_thread = threading.Thread(target=run_processor_loop, daemon=True)
-    processor_thread.start()
-    logger.info("Processor thread started")
-
     # Create and run web app
     app = web.Application()
     app.router.add_post("/api/messages", messages)
     app.router.add_post("/api/send-note", api_send_note)
+    app.router.add_post("/webhooks/aircall", aircall_webhook)
     app.router.add_get("/api/users", api_list_users)
     app.router.add_get("/health", health)
     app.router.add_get("/", health)
 
     logger.info(f"Starting web server on port {PORT}")
+    logger.info("Aircall webhook endpoint: POST /webhooks/aircall")
     web.run_app(app, host="0.0.0.0", port=PORT)
 
 

@@ -4,6 +4,9 @@ Extracts candidate information from call transcripts and sends to consultants vi
 
 Author: Joel @ Meraki Talent
 Date: January 2026
+
+Updated: March 2026 — Input source changed from Fireflies/Google Drive to Aircall webhooks.
+Google Drive polling logic retained in deprecated block for rollback if needed.
 """
 
 import os
@@ -13,14 +16,11 @@ import time
 import logging
 import base64
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 import requests
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
-import pdfplumber
-import PyPDF2
 import io
 
 # ============================================================================
@@ -30,10 +30,8 @@ import io
 # Google
 GOOGLE_SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_SERVICE_ACCOUNT_FILE", "meraki-n8n-automation-66a9d5aafc1e.json")
 GOOGLE_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")  # For Railway: paste full JSON
-GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "1SfFPHC1DRUzcR8FDcdQkzr5oJZhtNSzr")
 GOOGLE_SPREADSHEET_ID = os.environ.get("GOOGLE_SPREADSHEET_ID", "1Z_5rhbhe4lW13t4DKOzhWW-cKLbeyneUHTZXBUmBM-g")
 
-# Azure OpenAI
 # Gemini API (Google AI Studio)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
@@ -47,7 +45,6 @@ TEAM_ID = os.environ.get("TEAM_ID", "")  # Teams team ID for private channels
 
 # Processing
 WORD_COUNT_THRESHOLD = int(os.environ.get("WORD_COUNT_THRESHOLD", "300"))
-PROCESSED_PREFIX = "[PROCESSED] "
 
 # Logging
 logging.basicConfig(
@@ -61,9 +58,8 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 def get_google_services():
-    """Initialize Google Drive and Sheets services."""
+    """Initialize Google Sheets service. Drive service no longer needed."""
     scopes = [
-        'https://www.googleapis.com/auth/drive',
         'https://www.googleapis.com/auth/spreadsheets'
     ]
 
@@ -90,64 +86,26 @@ def get_google_services():
             scopes=scopes
         )
 
-    drive_service = build('drive', 'v3', credentials=credentials)
     sheets_service = build('sheets', 'v4', credentials=credentials)
-    return drive_service, sheets_service
-
-
-def get_new_pdf_files(drive_service) -> list:
-    """Get unprocessed PDF files from Google Drive folder (created after 26 Jan 2026)."""
-    # Fixed cutoff date - ignore all files before this date
-    cutoff_str = '2026-01-26T00:00:00'
-
-    query = (
-        f"'{GOOGLE_DRIVE_FOLDER_ID}' in parents and "
-        f"mimeType='application/pdf' and "
-        f"not name contains '{PROCESSED_PREFIX}' and "
-        f"createdTime > '{cutoff_str}'"
-    )
-    results = drive_service.files().list(
-        q=query,
-        fields="files(id, name, createdTime)",
-        orderBy="createdTime desc"
-    ).execute()
-    return results.get('files', [])
-
-
-def download_pdf(drive_service, file_id: str) -> bytes:
-    """Download PDF file content from Google Drive."""
-    request = drive_service.files().get_media(fileId=file_id)
-    file_content = io.BytesIO()
-    downloader = MediaIoBaseDownload(file_content, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-    file_content.seek(0)
-    return file_content.read()
-
-
-def rename_processed_file(drive_service, file_id: str, original_name: str):
-    """Rename file to mark as processed."""
-    new_name = f"{PROCESSED_PREFIX}{original_name}"
-    drive_service.files().update(
-        fileId=file_id,
-        body={'name': new_name}
-    ).execute()
-    logger.info(f"Renamed file to: {new_name}")
+    return sheets_service
 
 
 def get_consultants(sheets_service) -> Dict[str, Dict]:
-    """Load consultants from Google Sheets."""
+    """
+    Load consultants from Google Sheets.
+    Actual columns: A:Name | B:Email | C:Desk | D:TeamsUserId | E:Active |
+                    F:Office | G:Financials Team | H:Line Manager |
+                    I:Tracker Team | J:Temp Desk | K:AircallUserId
+    """
     result = sheets_service.spreadsheets().values().get(
         spreadsheetId=GOOGLE_SPREADSHEET_ID,
-        range='Consultants!A:F'  # Extended to include ChannelId column
+        range='Consultants!A:K'
     ).execute()
     rows = result.get('values', [])
 
     if not rows:
         return {}
 
-    headers = rows[0]
     consultants = {}
 
     for row in rows[1:]:
@@ -159,10 +117,45 @@ def get_consultants(sheets_service) -> Dict[str, Dict]:
                 'Desk': row[2] if len(row) > 2 else '',
                 'TeamsUserId': row[3] if len(row) > 3 else '',
                 'Active': row[4].upper() == 'TRUE' if len(row) > 4 else False,
-                'ChannelId': row[5] if len(row) > 5 else ''
+                'AircallUserId': row[10] if len(row) > 10 else '',
             }
 
     return consultants
+
+
+def find_consultant_by_aircall_id(aircall_user_id: str, consultants: Dict[str, Dict]) -> Tuple[Optional[Dict], str]:
+    """
+    Find consultant by Aircall user ID.
+    Returns (consultant_dict, consultant_name) or (None, '') if not found.
+    """
+    if not aircall_user_id:
+        return None, ''
+
+    for name_key, consultant_data in consultants.items():
+        if consultant_data.get('AircallUserId') == aircall_user_id:
+            return consultant_data, consultant_data['Name']
+
+    return None, ''
+
+
+def find_consultant_by_name(name: str, consultants: Dict[str, Dict]) -> Tuple[Optional[Dict], str]:
+    """
+    Find consultant by name (case-insensitive contains match).
+    Returns (consultant_dict, consultant_name) or (None, '') if not found.
+    """
+    if not name:
+        return None, ''
+
+    name_lower = name.lower()
+
+    # Sort by name length descending to match longer names first
+    sorted_consultants = sorted(consultants.items(), key=lambda x: len(x[0]), reverse=True)
+
+    for name_key, consultant_data in sorted_consultants:
+        if name_key in name_lower or name_lower in name_key:
+            return consultant_data, consultant_data['Name']
+
+    return None, ''
 
 
 def get_prompts(sheets_service) -> Dict[str, str]:
@@ -186,10 +179,10 @@ def get_prompts(sheets_service) -> Dict[str, str]:
     return prompts
 
 
-def log_skipped_call(sheets_service, filename: str, word_count: int, reason: str, consultant_name: str = ''):
+def log_skipped_call(sheets_service, source: str, word_count: int, reason: str, consultant_name: str = ''):
     """Log skipped call to Google Sheets."""
     values = [[
-        filename,
+        source,
         datetime.now().isoformat(),
         word_count,
         reason,
@@ -201,13 +194,13 @@ def log_skipped_call(sheets_service, filename: str, word_count: int, reason: str
         valueInputOption='RAW',
         body={'values': values}
     ).execute()
-    logger.info(f"Logged skipped call: {filename} - {reason}")
+    logger.info(f"Logged skipped call: {source} - {reason}")
 
 
-def log_processing_error(sheets_service, filename: str, error_message: str, node_name: str):
+def log_processing_error(sheets_service, source: str, error_message: str, node_name: str):
     """Log processing error to Google Sheets."""
     values = [[
-        filename,
+        source,
         datetime.now().isoformat(),
         error_message,
         node_name,
@@ -219,110 +212,12 @@ def log_processing_error(sheets_service, filename: str, error_message: str, node
         valueInputOption='RAW',
         body={'values': values}
     ).execute()
-    logger.error(f"Logged error: {filename} - {error_message}")
-
-
-# ============================================================================
-# PDF PARSING
-# ============================================================================
-
-def extract_pdf_text(pdf_content: bytes) -> str:
-    """Extract text from PDF content. Tries pdfplumber first, falls back to PyPDF2."""
-    text = ""
-
-    # Try pdfplumber first
-    try:
-        with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-        if text.strip():
-            return text.strip()
-    except Exception as e:
-        logger.warning(f"pdfplumber failed, trying PyPDF2: {e}")
-
-    # Fallback to PyPDF2
-    try:
-        reader = PyPDF2.PdfReader(io.BytesIO(pdf_content))
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
-    except Exception as e:
-        logger.error(f"PyPDF2 also failed: {e}")
-
-    return text.strip()
-
-
-def parse_filename(filename: str) -> Dict[str, str]:
-    """
-    Parse Fireflies filename to extract consultant name, candidate info, and date.
-
-    Examples:
-    - Killian_Dougal___1_929-229-1016__-__1_949-701-2278-transcript-2026-01-20T13-43-50_000Z.pdf
-    - Sean_McDermott___44_131_381_5617__-__44_7933_158168-transcript-2026-01-20T13-43-55_000Z.pdf
-    """
-    result = {
-        'consultantName': '',
-        'candidateName': '',
-        'callDate': datetime.now().strftime('%Y-%m-%d'),
-        'fileName': filename
-    }
-
-    # Try to extract consultant name (before ___)
-    if '___' in filename:
-        consultant_part = filename.split('___')[0]
-        result['consultantName'] = consultant_part.replace('_', ' ').strip()
-    elif ' - ' in filename:
-        # Alternative format: "+1 917-843-9780 - Reece Pearce [+1 929-492-2994]-transcript-..."
-        parts = filename.split(' - ')
-        if len(parts) >= 2:
-            # Find the part with a name (contains letters)
-            for part in parts:
-                if re.search(r'[A-Za-z]{2,}', part):
-                    # Extract name, removing phone numbers in brackets
-                    name = re.sub(r'\[.*?\]', '', part).strip()
-                    name = re.sub(r'[\+\d\-\(\)\s]+$', '', name).strip()
-                    if name:
-                        result['consultantName'] = name
-                        break
-
-    # Extract date from filename
-    date_match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
-    if date_match:
-        result['callDate'] = date_match.group(1)
-
-    # Extract candidate info (phone number or name)
-    # Look for phone numbers
-    phone_match = re.search(r'[\+]?[\d\s\-]{10,}', filename)
-    if phone_match:
-        result['candidateName'] = phone_match.group(0).strip()
-
-    return result
+    logger.error(f"Logged error: {source} - {error_message}")
 
 
 def count_words(text: str) -> int:
     """Count words in text."""
     return len(text.split())
-
-
-def find_consultant_in_filename(filename: str, consultants: Dict[str, Dict]) -> tuple:
-    """
-    Find consultant by checking if their name appears anywhere in the filename.
-    Returns (consultant_dict, consultant_name) or (None, '') if not found.
-    """
-    filename_lower = filename.lower()
-
-    # Sort by name length descending to match longer names first
-    # (e.g., "Jonathan Kearsley" before "Jon")
-    sorted_consultants = sorted(consultants.items(), key=lambda x: len(x[0]), reverse=True)
-
-    for name_key, consultant_data in sorted_consultants:
-        if name_key in filename_lower:
-            return consultant_data, consultant_data['Name']
-
-    return None, ''
 
 
 # ============================================================================
@@ -331,7 +226,6 @@ def find_consultant_in_filename(filename: str, consultants: Dict[str, Dict]) -> 
 
 def call_gemini(prompt_template: str, transcript: str, consultant_name: str = '', candidate_name: str = '', max_retries: int = 3) -> str:
     """Call Gemini 2.5 Pro to extract call notes with retry logic."""
-    import time
 
     # Build the full prompt
     full_prompt = prompt_template.replace('{{transcript_text}}', transcript)
@@ -416,12 +310,10 @@ class GraphAPIClient:
 
     def _load_refresh_token(self):
         """Load refresh token from environment variable or file."""
-        # First try environment variable (Railway)
         if MS_REFRESH_TOKEN:
             self.refresh_token = MS_REFRESH_TOKEN
             return
 
-        # Fall back to file (local development)
         token_file = 'ms_refresh_token.txt'
         if os.path.exists(token_file):
             with open(token_file, 'r') as f:
@@ -560,7 +452,7 @@ class GraphAPIClient:
         logger.info(f"Message sent to channel {channel_id}")
 
 
-def build_adaptive_card(candidate_name: str, call_date: str, notes: str, filename: str) -> dict:
+def build_adaptive_card(candidate_name: str, call_date: str, notes: str, source: str) -> dict:
     """Build an Adaptive Card with the call notes."""
     return {
         "type": "AdaptiveCard",
@@ -587,7 +479,7 @@ def build_adaptive_card(candidate_name: str, call_date: str, notes: str, filenam
             },
             {
                 "type": "TextBlock",
-                "text": f"Source: {filename}",
+                "text": f"Source: {source}",
                 "size": "Small",
                 "isSubtle": True,
                 "spacing": "Large"
@@ -633,99 +525,238 @@ def send_via_christina(user_aad_id: str, card: dict, consultant_name: str) -> bo
 
 
 # ============================================================================
-# MAIN PROCESSOR
+# MAIN PROCESSOR — Reusable pipeline entry point
 # ============================================================================
 
-def process_single_file(
-    drive_service,
+def process_transcript(
+    transcript: str,
+    consultant: Dict[str, Any],
+    consultant_name: str,
+    candidate_name: str,
+    call_date: str,
+    source_label: str,
     sheets_service,
-    file: dict,
-    consultants: dict,
-    prompts: dict
 ):
-    """Process a single PDF file."""
+    """
+    Process a transcript through Gemini and deliver via Teams.
 
+    This is the shared pipeline used by both the Aircall webhook handler
+    and (previously) the Google Drive poller.
+
+    Args:
+        transcript: Full transcript text
+        consultant: Consultant dict from Google Sheets lookup
+        consultant_name: Display name of the consultant
+        candidate_name: Caller/candidate identifier (name or phone number)
+        call_date: Date string (YYYY-MM-DD)
+        source_label: Label for logging/card (e.g. "Aircall call 12345")
+        sheets_service: Google Sheets service instance
+    """
+    word_count = count_words(transcript)
+    logger.info(f"Transcript word count: {word_count} (source: {source_label})")
+
+    # Word count gate
+    if word_count < WORD_COUNT_THRESHOLD:
+        log_skipped_call(sheets_service, source_label, word_count, "Too short", consultant_name)
+        return
+
+    if not consultant['Active']:
+        log_skipped_call(sheets_service, source_label, word_count, "Inactive consultant", consultant_name)
+        return
+
+    teams_user_id = consultant['TeamsUserId']
+    desk = consultant['Desk']
+
+    if not teams_user_id:
+        log_skipped_call(sheets_service, source_label, word_count, "No TeamsUserId", consultant_name)
+        return
+
+    # Get desk prompt
+    prompts = get_prompts(sheets_service)
+    prompt_template = prompts.get(desk)
+    if not prompt_template:
+        prompt_template = prompts.get('Default', 'Please summarize this call transcript:\n\n{{transcript_text}}')
+
+    # Call Gemini 2.5 Pro
+    logger.info(f"Calling Gemini 2.5 Pro for {source_label}")
+    notes = call_gemini(
+        prompt_template,
+        transcript,
+        consultant_name,
+        candidate_name,
+    )
+
+    # Build adaptive card
+    card = build_adaptive_card(candidate_name, call_date, notes, source_label)
+
+    # Send via Christina bot
+    success = send_via_christina(teams_user_id, card, consultant_name)
+
+    if not success:
+        log_skipped_call(sheets_service, source_label, word_count, "Christina delivery failed - user not registered", consultant_name)
+        return
+
+    logger.info(f"Successfully processed: {source_label}")
+
+
+# ============================================================================
+# DEPRECATED — Google Drive polling (retained for rollback)
+# Remove this block once Aircall integration is confirmed stable.
+# ============================================================================
+
+# To re-enable the Drive poller:
+# 1. Add 'https://www.googleapis.com/auth/drive' back to scopes in get_google_services()
+# 2. Restore drive_service return from get_google_services()
+# 3. Uncomment run_once() and process_single_file() below
+# 4. Re-add the processor loop call in main.py
+
+"""
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID", "1SfFPHC1DRUzcR8FDcdQkzr5oJZhtNSzr")
+PROCESSED_PREFIX = "[PROCESSED] "
+
+
+def get_new_pdf_files(drive_service) -> list:
+    cutoff_str = '2026-01-26T00:00:00'
+    query = (
+        f"'{GOOGLE_DRIVE_FOLDER_ID}' in parents and "
+        f"mimeType='application/pdf' and "
+        f"not name contains '{PROCESSED_PREFIX}' and "
+        f"createdTime > '{cutoff_str}'"
+    )
+    results = drive_service.files().list(
+        q=query,
+        fields="files(id, name, createdTime)",
+        orderBy="createdTime desc"
+    ).execute()
+    return results.get('files', [])
+
+
+def download_pdf(drive_service, file_id: str) -> bytes:
+    from googleapiclient.http import MediaIoBaseDownload
+    request = drive_service.files().get_media(fileId=file_id)
+    file_content = io.BytesIO()
+    downloader = MediaIoBaseDownload(file_content, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    file_content.seek(0)
+    return file_content.read()
+
+
+def rename_processed_file(drive_service, file_id: str, original_name: str):
+    new_name = f"{PROCESSED_PREFIX}{original_name}"
+    drive_service.files().update(
+        fileId=file_id,
+        body={'name': new_name}
+    ).execute()
+    logger.info(f"Renamed file to: {new_name}")
+
+
+def extract_pdf_text(pdf_content: bytes) -> str:
+    import pdfplumber
+    import PyPDF2
+    text = ""
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_content)) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\\n"
+        if text.strip():
+            return text.strip()
+    except Exception as e:
+        logger.warning(f"pdfplumber failed, trying PyPDF2: {e}")
+    try:
+        reader = PyPDF2.PdfReader(io.BytesIO(pdf_content))
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\\n"
+    except Exception as e:
+        logger.error(f"PyPDF2 also failed: {e}")
+    return text.strip()
+
+
+def parse_filename(filename: str) -> Dict[str, str]:
+    result = {
+        'consultantName': '',
+        'candidateName': '',
+        'callDate': datetime.now().strftime('%Y-%m-%d'),
+        'fileName': filename
+    }
+    if '___' in filename:
+        consultant_part = filename.split('___')[0]
+        result['consultantName'] = consultant_part.replace('_', ' ').strip()
+    elif ' - ' in filename:
+        parts = filename.split(' - ')
+        if len(parts) >= 2:
+            for part in parts:
+                if re.search(r'[A-Za-z]{2,}', part):
+                    name = re.sub(r'\\[.*?\\]', '', part).strip()
+                    name = re.sub(r'[\\+\\d\\-\\(\\)\\s]+$', '', name).strip()
+                    if name:
+                        result['consultantName'] = name
+                        break
+    date_match = re.search(r'(\\d{4}-\\d{2}-\\d{2})', filename)
+    if date_match:
+        result['callDate'] = date_match.group(1)
+    phone_match = re.search(r'[\\+]?[\\d\\s\\-]{10,}', filename)
+    if phone_match:
+        result['candidateName'] = phone_match.group(0).strip()
+    return result
+
+
+def find_consultant_in_filename(filename: str, consultants: Dict[str, Dict]) -> tuple:
+    filename_lower = filename.lower()
+    sorted_consultants = sorted(consultants.items(), key=lambda x: len(x[0]), reverse=True)
+    for name_key, consultant_data in sorted_consultants:
+        if name_key in filename_lower:
+            return consultant_data, consultant_data['Name']
+    return None, ''
+
+
+def process_single_file(drive_service, sheets_service, file, consultants, prompts):
     file_id = file['id']
     filename = file['name']
-
     logger.info(f"Processing: {filename}")
-
     try:
-        # 1. Download PDF
         pdf_content = download_pdf(drive_service, file_id)
-
-        # 2. Extract text
         transcript = extract_pdf_text(pdf_content)
         word_count = count_words(transcript)
-
         logger.info(f"Extracted {word_count} words from {filename}")
-
-        # 3. Parse filename for metadata
         file_info = parse_filename(filename)
-
-        # 4. Word count gate
         if word_count < WORD_COUNT_THRESHOLD:
             log_skipped_call(sheets_service, filename, word_count, "Too short", '')
             rename_processed_file(drive_service, file_id, filename)
             return
-
-        # 5. Find consultant by name anywhere in filename (contains lookup)
         consultant, consultant_name = find_consultant_in_filename(filename, consultants)
-
         if not consultant:
             log_skipped_call(sheets_service, filename, word_count, "Unknown consultant", '')
             rename_processed_file(drive_service, file_id, filename)
             return
-
         if not consultant['Active']:
             log_skipped_call(sheets_service, filename, word_count, "Inactive consultant", consultant_name)
             rename_processed_file(drive_service, file_id, filename)
             return
-
         teams_user_id = consultant['TeamsUserId']
         desk = consultant['Desk']
-
         if not teams_user_id:
             log_skipped_call(sheets_service, filename, word_count, "No TeamsUserId", consultant_name)
             rename_processed_file(drive_service, file_id, filename)
             return
-
-        # 6. Get desk prompt
         prompt_template = prompts.get(desk)
         if not prompt_template:
-            # Use default/fallback prompt
-            prompt_template = prompts.get('Default', 'Please summarize this call transcript:\n\n{{transcript_text}}')
-
-        # 7. Call Gemini 2.5 Pro
+            prompt_template = prompts.get('Default', 'Please summarize this call transcript:\\n\\n{{transcript_text}}')
         logger.info(f"Calling Gemini 2.5 Pro for {filename}")
-        notes = call_gemini(
-            prompt_template,
-            transcript,
-            consultant_name,
-            file_info['candidateName']
-        )
-
-        # 8. Build adaptive card
-        card = build_adaptive_card(
-            file_info['candidateName'],
-            file_info['callDate'],
-            notes,
-            filename
-        )
-
-        # 9. Send via Christina bot
+        notes = call_gemini(prompt_template, transcript, consultant_name, file_info['candidateName'])
+        card = build_adaptive_card(file_info['candidateName'], file_info['callDate'], notes, filename)
         success = send_via_christina(teams_user_id, card, consultant_name)
-
         if not success:
             log_skipped_call(sheets_service, filename, word_count, "Christina delivery failed - user not registered", consultant_name)
             rename_processed_file(drive_service, file_id, filename)
             return
-
-        # 10. Rename processed file
         rename_processed_file(drive_service, file_id, filename)
-
         logger.info(f"Successfully processed: {filename}")
-
     except Exception as e:
         import traceback
         logger.error(f"Error processing {filename}: {str(e)}")
@@ -734,68 +765,27 @@ def process_single_file(
 
 
 def run_once():
-    """Run a single processing cycle."""
     logger.info("-" * 40)
     logger.info("Starting processing cycle...")
-
-    # Initialize services
     drive_service, sheets_service = get_google_services()
-
-    # Load configuration from sheets (refreshed each cycle)
     consultants = get_consultants(sheets_service)
     prompts = get_prompts(sheets_service)
     logger.info(f"Loaded {len(consultants)} consultants, {len(prompts)} prompts")
-    if prompts:
-        logger.info(f"Prompt desks: {list(prompts.keys())}")
-
-    # Get new files
     files = get_new_pdf_files(drive_service)
-
     if not files:
         logger.info("No new files to process")
         return 0
-
     logger.info(f"Found {len(files)} new files to process")
-
-    # Process each file
     processed = 0
     for file in files:
         try:
-            process_single_file(
-                drive_service,
-                sheets_service,
-                file,
-                consultants,
-                prompts
-            )
+            process_single_file(drive_service, sheets_service, file, consultants, prompts)
             processed += 1
         except Exception as e:
             logger.error(f"Failed to process {file['name']}: {e}")
-
     logger.info(f"Cycle complete. Processed {processed}/{len(files)} files.")
     return processed
-
-
-def main():
-    """Main entry point with polling loop."""
-    # Configuration
-    POLL_INTERVAL = int(os.environ.get('POLL_INTERVAL', 300))  # Default 5 minutes
-
-    logger.info("=" * 60)
-    logger.info("Meraki Call Notes Processor")
-    logger.info(f"Poll interval: {POLL_INTERVAL} seconds")
-    logger.info("=" * 60)
-
-    # Run continuously
-    while True:
-        try:
-            run_once()
-        except Exception as e:
-            logger.error(f"Error in processing cycle: {e}")
-
-        logger.info(f"Sleeping for {POLL_INTERVAL} seconds...")
-        time.sleep(POLL_INTERVAL)
-
-
-if __name__ == "__main__":
-    main()
+"""
+# ============================================================================
+# END DEPRECATED BLOCK
+# ============================================================================
