@@ -109,14 +109,13 @@ def parse_webhook_payload(payload: dict) -> Optional[Dict[str, Any]]:
 
 
 def download_recording(recording_url: str) -> bytes:
-    """Download the MP3 recording from Aircall."""
+    """Download the MP3 recording from Aircall.
+    The recording URL from the webhook is a pre-signed S3 URL,
+    so no auth headers should be sent (they conflict with the S3 signature).
+    """
     logger.info(f"Downloading recording from Aircall...")
 
-    auth = None
-    if AIRCALL_API_ID and AIRCALL_API_KEY:
-        auth = (AIRCALL_API_ID, AIRCALL_API_KEY)
-
-    response = requests.get(recording_url, auth=auth, timeout=300, stream=True)
+    response = requests.get(recording_url, timeout=300)
     response.raise_for_status()
 
     content = response.content
