@@ -36,6 +36,52 @@ MAX_DURATION_SECONDS = 1400
 CHUNK_DURATION_MS = 20 * 60 * 1000
 
 
+def fetch_call(call_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch a call from the Aircall API and return parsed metadata (same format as webhook)."""
+    resp = requests.get(
+        f"https://api.aircall.io/v1/calls/{call_id}",
+        auth=(AIRCALL_API_ID, AIRCALL_API_KEY),
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("call", {})
+
+    recording_url = data.get("recording")
+    if not recording_url:
+        logger.info(f"No recording URL for call {call_id}")
+        return None
+
+    user = data.get("user") or {}
+    contact = data.get("contact") or {}
+    contact_name = ""
+    if contact:
+        first = contact.get("first_name", "")
+        last = contact.get("last_name", "")
+        contact_name = f"{first} {last}".strip()
+
+    started_at = data.get("started_at")
+    call_date = datetime.now().strftime("%Y-%m-%d")
+    if started_at:
+        try:
+            call_date = datetime.fromtimestamp(started_at).strftime("%Y-%m-%d")
+        except (ValueError, TypeError, OSError):
+            pass
+
+    return {
+        "call_id": str(data.get("id", "")),
+        "recording_url": recording_url,
+        "aircall_user_id": str(user.get("id", "")),
+        "user_name": user.get("name", ""),
+        "caller_number": data.get("raw_digits", ""),
+        "contact_name": contact_name,
+        "call_date": call_date,
+        "duration": data.get("duration", 0),
+        "direction": data.get("direction", ""),
+        "started_at": started_at,
+        "ended_at": data.get("ended_at"),
+    }
+
+
 def verify_webhook_signature(payload_body: bytes, signature: str) -> bool:
     """Verify Aircall webhook signature if a secret is configured."""
     if not AIRCALL_WEBHOOK_SECRET:

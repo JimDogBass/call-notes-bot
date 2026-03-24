@@ -454,6 +454,29 @@ async def aircall_webhook(req: web.Request) -> web.Response:
         return web.Response(status=500, text="Internal error")
 
 
+async def retry_call(req: web.Request) -> web.Response:
+    """Re-fetch a call from Aircall API and reprocess it."""
+    call_id = req.match_info["call_id"]
+    try:
+        call_meta = aircall_handler.fetch_call(call_id)
+        if not call_meta:
+            return web.json_response({"error": "No recording found for that call"}, status=404)
+
+        logger.info(f"Retry: reprocessing call {call_id} (user: {call_meta['user_name']}, duration: {call_meta['duration']}s)")
+
+        thread = threading.Thread(
+            target=process_aircall_call,
+            args=(call_meta,),
+            daemon=True,
+        )
+        thread.start()
+
+        return web.json_response({"status": "accepted", "call_id": call_id, "user": call_meta["user_name"]}, status=200)
+    except Exception as e:
+        logger.error(f"Retry failed for call {call_id}: {e}")
+        return web.json_response({"error": str(e)}, status=500)
+
+
 async def api_send_note(req: web.Request) -> web.Response:
     """API endpoint to send a call note to a user."""
     try:
@@ -541,6 +564,7 @@ def main():
     app.router.add_post("/api/messages", messages)
     app.router.add_post("/api/send-note", api_send_note)
     app.router.add_post("/webhooks/aircall", aircall_webhook)
+    app.router.add_get("/retry/{call_id}", retry_call)
     app.router.add_get("/api/users", api_list_users)
     app.router.add_get("/health", health)
     app.router.add_get("/", health)
