@@ -316,6 +316,15 @@ def process_aircall_call(call_meta: dict):
     source_label = f"Aircall call {call_id}"
 
     try:
+        # 0. If recording wasn't ready at webhook time, poll for it
+        if call_meta.get("recording_pending"):
+            logger.info(f"Recording pending for call {call_id} — polling Aircall API...")
+            updated = aircall_handler.poll_for_recording(call_id)
+            if not updated:
+                logger.info(f"No recording found after polling for call {call_id} — skipping")
+                return
+            call_meta = updated
+
         # 1. Initialize Google Sheets
         sheets_service = processor.get_google_services()
 

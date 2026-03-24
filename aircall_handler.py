@@ -97,30 +97,9 @@ def verify_webhook_signature(payload_body: bytes, signature: str) -> bool:
     return hmac.compare_digest(expected, signature)
 
 
-def parse_webhook_payload(payload: dict) -> Optional[Dict[str, Any]]:
-    """
-    Parse an Aircall call.ended webhook payload.
-    Returns structured call metadata or None if the event should be ignored.
-    """
-    event = payload.get("event")
-    if event != "call.ended":
-        logger.info(f"Ignoring Aircall event: {event}")
-        return None
-
-    data = payload.get("data", {})
-
-    recording_url = data.get("recording")
-    if not recording_url:
-        logger.info(f"No recording URL in call {data.get('id')} — skipping")
-        return None
-
-    # Extract user (consultant) info
+def _build_call_meta(data: dict, recording_pending: bool = False) -> Dict[str, Any]:
+    """Build standardised call metadata dict from Aircall call data."""
     user = data.get("user") or {}
-    aircall_user_id = str(user.get("id", ""))
-    user_name = user.get("name", "")
-
-    # Extract caller/contact info
-    raw_digits = data.get("raw_digits", "")
     contact = data.get("contact") or {}
     contact_name = ""
     if contact:
@@ -128,9 +107,7 @@ def parse_webhook_payload(payload: dict) -> Optional[Dict[str, Any]]:
         last = contact.get("last_name", "")
         contact_name = f"{first} {last}".strip()
 
-    # Timestamps
     started_at = data.get("started_at")
-    ended_at = data.get("ended_at")
     call_date = datetime.now().strftime("%Y-%m-%d")
     if started_at:
         try:
@@ -138,22 +115,59 @@ def parse_webhook_payload(payload: dict) -> Optional[Dict[str, Any]]:
         except (ValueError, TypeError, OSError):
             pass
 
-    # Duration in seconds
-    duration = data.get("duration", 0)
-
     return {
         "call_id": str(data.get("id", "")),
-        "recording_url": recording_url,
-        "aircall_user_id": aircall_user_id,
-        "user_name": user_name,
-        "caller_number": raw_digits,
+        "recording_url": data.get("recording") or "",
+        "aircall_user_id": str(user.get("id", "")),
+        "user_name": user.get("name", ""),
+        "caller_number": data.get("raw_digits", ""),
         "contact_name": contact_name,
         "call_date": call_date,
-        "duration": duration,
+        "duration": data.get("duration", 0),
         "direction": data.get("direction", ""),
         "started_at": started_at,
-        "ended_at": ended_at,
+        "ended_at": data.get("ended_at"),
+        "recording_pending": recording_pending,
     }
+
+
+def poll_for_recording(call_id: str, max_attempts: int = 5, interval: int = 30) -> Optional[Dict[str, Any]]:
+    """Poll the Aircall API until the recording URL is available."""
+    import time
+    for attempt in range(1, max_attempts + 1):
+        time.sleep(interval)
+        try:
+            fetched = fetch_call(call_id)
+            if fetched and fetched.get("recording_url"):
+                logger.info(f"Recording URL found on attempt {attempt}/{max_attempts} for call {call_id}")
+                return fetched
+            logger.info(f"Poll attempt {attempt}/{max_attempts} for call {call_id} — still no recording")
+        except Exception as e:
+            logger.warning(f"Poll attempt {attempt}/{max_attempts} for call {call_id} failed: {e}")
+    logger.info(f"No recording URL after {max_attempts} attempts for call {call_id} — giving up")
+    return None
+
+
+def parse_webhook_payload(payload: dict) -> Optional[Dict[str, Any]]:
+    """
+    Parse an Aircall call.ended webhook payload.
+    Returns structured call metadata or None if the event should be ignored.
+    If no recording URL yet, returns metadata with recording_pending=True.
+    """
+    event = payload.get("event")
+    if event != "call.ended":
+        logger.info(f"Ignoring Aircall event: {event}")
+        return None
+
+    data = payload.get("data", {})
+    recording_url = data.get("recording")
+    call_id = str(data.get("id", ""))
+
+    if not recording_url:
+        logger.info(f"No recording URL in call {call_id} — marking as pending")
+        return _build_call_meta(data, recording_pending=True)
+
+    return _build_call_meta(data)
 
 
 def download_recording(recording_url: str) -> bytes:
