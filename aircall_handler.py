@@ -30,6 +30,8 @@ AZURE_OPENAI_DEPLOYMENT = os.environ.get("AZURE_OPENAI_DEPLOYMENT", "gpt-4o-mini
 
 # 24MB threshold for chunking (OpenAI limit is 25MB, leave margin)
 MAX_FILE_SIZE_BYTES = 24 * 1024 * 1024
+# 1500s is the model's max duration — chunk if over 1400s to leave margin
+MAX_DURATION_SECONDS = 1400
 # 20-minute chunks in milliseconds
 CHUNK_DURATION_MS = 20 * 60 * 1000
 
@@ -125,10 +127,10 @@ def download_recording(recording_url: str) -> bytes:
     return content
 
 
-def transcribe_audio(audio_content: bytes) -> str:
+def transcribe_audio(audio_content: bytes, duration_seconds: int = 0) -> str:
     """
     Transcribe audio using OpenAI gpt-4o-mini-transcribe.
-    If the file is over 24MB, splits into 20-minute chunks first.
+    Chunks if file is over 24MB or duration exceeds 1400 seconds.
     """
     client = AzureOpenAI(
         azure_endpoint=AZURE_OPENAI_ENDPOINT,
@@ -136,11 +138,17 @@ def transcribe_audio(audio_content: bytes) -> str:
         api_version="2025-03-01-preview",
     )
 
-    if len(audio_content) <= MAX_FILE_SIZE_BYTES:
-        return _transcribe_single(client, audio_content)
-    else:
-        logger.info(f"File is {len(audio_content) / (1024*1024):.1f} MB — chunking into 20-min segments")
+    needs_chunking = (
+        len(audio_content) > MAX_FILE_SIZE_BYTES
+        or duration_seconds > MAX_DURATION_SECONDS
+    )
+
+    if needs_chunking:
+        reason = "size" if len(audio_content) > MAX_FILE_SIZE_BYTES else "duration"
+        logger.info(f"Chunking audio ({reason}: {len(audio_content)/(1024*1024):.1f} MB, {duration_seconds}s)")
         return _transcribe_chunked(client, audio_content)
+    else:
+        return _transcribe_single(client, audio_content)
 
 
 def _transcribe_single(client: AzureOpenAI, audio_content: bytes) -> str:

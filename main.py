@@ -349,7 +349,7 @@ def process_aircall_call(call_meta: dict):
 
         # 5. Transcribe
         logger.info(f"Transcribing call {call_id}...")
-        transcript = aircall_handler.transcribe_audio(audio_content)
+        transcript = aircall_handler.transcribe_audio(audio_content, duration_seconds=call_meta.get("duration", 0))
         logger.info(f"Transcription complete: {processor.count_words(transcript)} words")
 
         # 6. Determine candidate name — use contact name, fall back to phone number
