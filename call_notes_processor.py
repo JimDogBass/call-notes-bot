@@ -232,7 +232,7 @@ def call_gemini(prompt_template: str, transcript: str, consultant_name: str = ''
     full_prompt = full_prompt.replace('{{recruiter_names}}', consultant_name)
     full_prompt = full_prompt.replace('{{candidate_names}}', candidate_name)
 
-    system_instruction = "You are a recruitment call analyst for Meraki Talent, a UK-based financial services recruitment agency. Extract candidate information according to the provided template. Only include information explicitly stated by the candidate about themselves. Recruiter statements must be ignored. If information is not explicitly stated, write 'Not stated'. Do not infer or guess."
+    system_instruction = "You are a recruitment call analyst for Meraki Talent, a UK-based financial services recruitment agency. Extract candidate information according to the provided template. The transcript has no speaker labels, so use contextual cues to identify which statements describe the candidate (e.g., first-person statements like 'I worked at...', or confirmations like 'yes, that's right' in response to a recruiter's question). Capture information that appears to be about the candidate even if not perfectly attributable. If the recruiter quotes a specific value (e.g., a salary range) and the candidate confirms it, treat it as candidate-stated. If information is genuinely absent, write 'Not stated'. Avoid inventing details — only extract what the transcript supports."
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={GEMINI_API_KEY}"
 
