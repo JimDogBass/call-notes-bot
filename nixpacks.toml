@@ -1,5 +1,7 @@
-[phases.setup]
-nixPkgs = ["ffmpeg"]
-
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
+
+# OCR fallback for scanned PDFs needs poppler + tesseract. Uncomment if you
+# keep pdf2image/pytesseract in requirements.txt:
+# [phases.setup]
+# nixPkgs = ["poppler-utils", "tesseract"]
