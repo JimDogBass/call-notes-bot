@@ -1,8 +1,10 @@
 # Credentials - DO NOT COMMIT
 *.json
-ms_refresh_token.txt
 .env
 CREDENTIALS.md
+
+# Local state — point PROCESSED_STORE_PATH at a Railway volume to persist
+processed_emails.json
 
 # Python
 __pycache__/

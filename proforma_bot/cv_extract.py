@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import io
 import logging
-import re
 from typing import Any
 
 import pdfplumber
@@ -27,26 +26,8 @@ from . import aoai
 
 log = logging.getLogger("proforma_bot.cv")
 
-# ---------------------------------------------------------------------------
-# Attachment selection (spec §5)
-# ---------------------------------------------------------------------------
-
-_MIN_SIZE = 10_000  # ignore tiny inline signatures masquerading as attachments
-
-
-def pick_cv_attachment(attachments: list[dict[str, Any]]) -> dict[str, Any] | None:
-    keep = []
-    for a in attachments:
-        if a.get("isInline"):
-            continue
-        name = (a.get("name") or "").lower()
-        if name.endswith((".docx", ".pdf", ".doc")) and (a.get("size") or 0) > _MIN_SIZE:
-            keep.append(a)
-    if not keep:
-        return None
-    cv_named = [a for a in keep if "cv" in (a.get("name") or "").lower()]
-    pool = cv_named or keep
-    return max(pool, key=lambda a: a.get("size") or 0)
+# Attachment selection moved into gmail_client._pick_cv_attachment — Gmail
+# MIME-walks need a different shape than Graph's attachment listing.
 
 
 # ---------------------------------------------------------------------------

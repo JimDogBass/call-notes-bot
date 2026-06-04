@@ -1,4 +1,3 @@
-aiohttp
 docxtpl
 python-docx
 pdfplumber
@@ -6,6 +5,7 @@ pymupdf
 openai
 msal
 requests
+python-dotenv
 # Optional OCR fallback for scanned PDFs — needs poppler + tesseract installed
 # in the Railway container. Comment out if not provisioning those.
 pdf2image

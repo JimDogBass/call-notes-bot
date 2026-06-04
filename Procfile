@@ -1,1 +1,1 @@
-web: python -m proforma_bot.server
+worker: python main.py

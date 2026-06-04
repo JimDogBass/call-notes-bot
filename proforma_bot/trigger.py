@@ -1,81 +1,80 @@
-"""Inbox poller.
+"""Inbox poller. Combines gmail_client + processed_store + orchestrator.
 
-Why polling instead of a Graph change-notification subscription:
-  - Subscriptions for mail expire every ~3 days; we'd need a renewal job, a
-    public HTTPS endpoint with validation handshake, and lifecycle webhooks.
-  - Chris forwards at low volume (handful/day at most). Sub-minute latency isn't
-    a product requirement. A 60s poll is dramatically simpler and stateless.
+Dedup: two layers.
+  1. Gmail IMAP \\Seen flag — set after a terminal outcome so the next
+     UNSEEN search excludes it.
+  2. processed_store.json — Message-ID set, checked BEFORE processing so we
+     never reprocess if the \\Seen flag failed to apply between runs.
 
-Dedup strategy: mark-as-read after a terminal outcome (processed or "no usable
-attachment"). The $filter is "isRead eq false AND from == Chris AND
-hasAttachments eq true" — so once we mark a message read, it falls out of the
-result set on the next poll. State lives in the mailbox itself; no Railway-
-volume or sheet needed.
-
-Failure handling: if handle_message raises (LLM error, Graph 5xx, render
-failure), we LEAVE the message unread and log. Operator marks it manually
-after investigating; we never silently retry-forever a poison message because
-the next poll picks it up too, which is OK at this volume. If retries become
-noisy, add a max-attempt category tag.
+If the orchestrator raises, we leave the message unread AND don't write to
+the processed store — the next poll picks it up. At Chris's volume (handful
+per day) this is fine; if a poison message starts looping, mark it read in
+Gmail manually.
 """
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any
 
-from . import config, graph_client, main as orchestrator
+from . import gmail_client, orchestrator, processed_store
 
 log = logging.getLogger("proforma_bot.trigger")
 
 
 def poll_once() -> dict[str, int]:
-    """One sweep of the meraki1 inbox. Returns a counts summary for logging."""
-    if not config.CHRIS_PAINE_ADDRESS:
-        log.warning("CHRIS_PAINE_ADDRESS not set; poll skipped")
-        return {"skipped": 1}
+    counts = {"seen": 0, "processed": 0, "skipped": 0, "errors": 0}
+    try:
+        messages = gmail_client.check_inbox()
+    except Exception as e:
+        log.exception("check_inbox failed: %s", e)
+        counts["errors"] += 1
+        return counts
 
-    messages = graph_client.list_unread_from(config.CHRIS_PAINE_ADDRESS)
-    counts = {"seen": len(messages), "processed": 0, "ignored": 0, "errors": 0}
+    counts["seen"] = len(messages)
     if not messages:
         return counts
 
-    log.info("poll: %d unread from Chris", len(messages))
     for msg in messages:
-        mid = msg["id"]
+        if processed_store.is_processed(msg.message_id):
+            log.info("already processed (Message-ID=%s); marking read", msg.message_id)
+            try:
+                gmail_client.mark_as_read(msg.uid)
+            except Exception as e:
+                log.error("mark_as_read failed for already-processed uid %s: %s", msg.uid, e)
+            counts["skipped"] += 1
+            continue
+
         try:
-            result = orchestrator.handle_message(mid)
+            result = orchestrator.handle(msg)
         except Exception as e:
-            log.exception("handle_message failed for %s: %s", mid, e)
+            log.exception("handle failed for uid %s: %s", msg.uid, e)
             counts["errors"] += 1
             continue
 
         if result in orchestrator.TERMINAL_RESULTS:
-            try:
-                graph_client.mark_as_read(mid)
-            except Exception as e:
-                log.error("mark_as_read failed for %s: %s", mid, e)
             if result == orchestrator.RESULT_PROCESSED:
+                processed_store.mark_processed(msg.message_id)
                 counts["processed"] += 1
             else:
-                counts["ignored"] += 1
+                counts["skipped"] += 1
+            try:
+                gmail_client.mark_as_read(msg.uid)
+            except Exception as e:
+                log.error("mark_as_read failed for uid %s: %s", msg.uid, e)
         else:
-            log.warning("unknown result %r for %s; leaving unread", result, mid)
+            log.warning("unknown result %r for uid %s; leaving unread", result, msg.uid)
             counts["errors"] += 1
 
     return counts
 
 
 def run_forever(interval_seconds: int) -> None:
-    """Long-running poll loop. Caller is expected to run this in a daemon thread."""
     log.info("starting poll loop (interval %ds)", interval_seconds)
     while True:
         try:
             counts = poll_once()
-            if counts.get("seen"):
+            if counts["seen"] or counts["errors"]:
                 log.info("poll summary: %s", counts)
         except Exception as e:
-            # Defensive: never let the loop die. Individual-message errors are
-            # already caught above; this catches list-call/auth-refresh failures.
-            log.exception("poll_once raised: %s", e)
+            log.exception("poll_once raised at top level: %s", e)
         time.sleep(interval_seconds)
