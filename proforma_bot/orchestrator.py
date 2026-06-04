@@ -24,16 +24,12 @@ def handle(incoming: IncomingEmail) -> str:
     # Prefer plain text; fall back to stripped HTML if the forward is HTML-only.
     body = incoming.body_text or email_extract.html_to_text(incoming.body_html)
 
-    # PII risk: this contains candidate intel. Trim aggressively; only kept long
-    # enough to diagnose the empty-header-fields bug, then drop back to a
-    # one-line length-only summary.
     log.info(
-        "uid %s: body source=%s len=%d (first 1500 chars follow)",
+        "uid %s: body source=%s len=%d",
         incoming.uid,
         "plain" if incoming.body_text else "html-stripped",
         len(body),
     )
-    log.info("BODY_PREVIEW>>> %s <<<BODY_PREVIEW", body[:1500].replace("\n", " | "))
 
     header = email_extract.extract_header(body)
     header = email_extract.merge_manual_defaults(header)
