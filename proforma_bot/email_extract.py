@@ -36,7 +36,7 @@ CANDIDATE'S LABEL                              ->  JSON FIELD
 "Previous PWC experience"                     ->  _intel.previous_pwc_experience
 "Previous PwC experience"                     ->  _intel.previous_pwc_experience
 "Other interview activity"                    ->  _intel.other_interview_activity
-"Availability to interview"                   ->  _intel.availability_to_interview
+"Availability to interview"                   ->  availability_to_interview
 
 The candidate often includes a "Reasons for why I am suited for the role" (or "Reasons suited" / "Reasons") section with numbered or bulleted points. Capture EACH point as a VERBATIM string in the additional_comments array, preserving punctuation and order. Do NOT shorten or summarise.
 
@@ -57,13 +57,13 @@ Shape:
   "base_location": "",
   "available_from": "",
   "holidays_appointments": "",
+  "availability_to_interview": "",
   "additional_comments": [],
   "_intel": {
     "current_salary": "",
     "right_to_work": "",
     "previous_pwc_experience": "",
-    "other_interview_activity": "",
-    "availability_to_interview": ""
+    "other_interview_activity": ""
   }
 }"""
 
@@ -86,4 +86,5 @@ def merge_manual_defaults(header: dict[str, Any]) -> dict[str, Any]:
     header.setdefault("rate_inc_charge", "[TBC]")
     header.setdefault("ltd_paye_umbrella", "[TBC]")
     header.setdefault("office_remote_line", "[TBC]")
+    header.setdefault("availability_to_interview", "[TBC]")
     return header

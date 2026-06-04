@@ -25,6 +25,7 @@ def _ensure_shape(payload: dict[str, Any]) -> dict[str, Any]:
         "name", "grade", "rate_inc_charge", "desired_day_rate",
         "ltd_paye_umbrella", "base_location", "available_from",
         "holidays_appointments", "office_remote_line",
+        "availability_to_interview",
     ):
         header.setdefault(key, "")
     header.setdefault("additional_comments", [])
