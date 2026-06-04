@@ -47,6 +47,21 @@ def _safe_filename(name: str) -> str:
     return cleaned.replace(" ", "_") or "candidate"
 
 
+def _xml_escape(v: Any) -> Any:
+    """Pre-escape XML entities in every string before docxtpl substitutes them
+    into the docx body. docxtpl 0.20.x does not auto-escape `&`/`<`/`>`, so a
+    label like 'Transaction Monitoring & Analysis' becomes malformed XML
+    (`<w:t>... & ...</w:t>`) and lxml/Word silently drops the orphan `&`.
+    Recurse through dicts/lists so nested fields are covered."""
+    if isinstance(v, str):
+        return v.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    if isinstance(v, list):
+        return [_xml_escape(x) for x in v]
+    if isinstance(v, dict):
+        return {k: _xml_escape(val) for k, val in v.items()}
+    return v
+
+
 def render_proforma(payload: dict[str, Any], template_path: str) -> str:
     """payload follows the spec §7 contract: {"header": {...}, "cv": {...}}.
     Returns path to the rendered .docx in /tmp."""
@@ -56,7 +71,7 @@ def render_proforma(payload: dict[str, Any], template_path: str) -> str:
             "pwc_proforma_template.docx into templates/"
         )
 
-    payload = _ensure_shape(payload)
+    payload = _xml_escape(_ensure_shape(payload))
 
     doc = DocxTemplate(template_path)
     doc.render(payload)
