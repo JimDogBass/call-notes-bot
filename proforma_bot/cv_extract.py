@@ -221,12 +221,15 @@ SYSTEM_PROMPT = """Extract this CV into JSON for the "cv" object. Return ONLY va
 
 REQUIRED SHAPE:
 {
+  "name": "",
   "candidate_profile": ["bullet 1", "bullet 2", ...],
   "education": [{"year": "", "qualification": "", "institution": ""}],
   "work_experience": [{"dates": "", "employer": "", "position": "", "bullets": ["..."]}],
   "key_skills_tools": [{"label": "", "description": ""}],
   "achievements": ["..."]
 }
+
+NAME: the candidate's full name, taken from the top of the CV (usually the largest heading on the first page, or the first substantial line). NOT job titles, NOT email addresses, NOT employer names.
 
 CRITICAL — MULTI-ROLE SAME COMPANY:
 PwC submittal forms render one block per role. When a candidate held multiple titles at the same employer, emit ONE work_experience entry PER ROLE — repeat the employer name on each. Do NOT merge titles into a single entry.

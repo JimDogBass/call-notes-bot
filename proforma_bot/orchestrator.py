@@ -44,6 +44,11 @@ def handle(incoming: IncomingEmail) -> str:
     cv_text = cv_extract.extract_text(incoming.cv_filename, incoming.cv_bytes)
     cv = cv_extract.extract_cv(cv_text)
 
+    # Candidate's name lives on the CV, not in the email body — copy it across
+    # so the proforma header renders with the actual name.
+    if not header.get("name"):
+        header["name"] = cv.get("name", "")
+
     payload = {"header": header, "cv": cv}
 
     # PII: do NOT log payload contents (passport/right-to-work/salary/phone live in _intel).
