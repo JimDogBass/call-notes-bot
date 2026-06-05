@@ -43,7 +43,7 @@ def _ensure_shape(payload: dict[str, Any]) -> dict[str, Any]:
     cv.setdefault("candidate_profile", [])
     cv.setdefault("education", [])
     cv.setdefault("work_experience", [])
-    cv.setdefault("key_skills_tools", [])
+    cv.setdefault("other_information", [])
     cv.setdefault("achievements", [])
 
     for role in cv["work_experience"]:

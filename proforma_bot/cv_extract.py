@@ -224,7 +224,7 @@ REQUIRED SHAPE:
   "candidate_profile": ["bullet 1", "bullet 2", ...],
   "education": [{"year": "", "qualification": "", "institution": ""}],
   "work_experience": [{"dates": "", "employer": "", "position": "", "bullets": ["..."]}],
-  "key_skills_tools": [{"label": "", "description": ""}],
+  "other_information": [{"label": "", "description": ""}],
   "achievements": ["..."]
 }
 
@@ -257,7 +257,11 @@ A bullet like "Strategic Leadership: define and implement..." is ONE bullet. Do 
 
 OTHER RULES:
 - Preserve employers, positions, and date ranges EXACTLY as written. Short-date format like "Jan 23" is preferred but only if the source uses it — otherwise keep what's written.
-- key_skills_tools: split each "Label: description" line into {"label": ..., "description": ...}. If a skills section is just a comma list with no labels, use the skill name as label and leave description "".
+- other_information: COLLECT every section on the CV that is NOT candidate profile, work experience, education, or achievements. Examples: Certifications, Languages, Technical Skills, Tools, Software, Memberships, Affiliations, Publications, Volunteer Work, Hobbies, Interests, References. Section labels vary by CV — work from whatever headings the source actually uses.
+  * If a section contains sub-labels or "Label: items" lines (e.g. a Skills section grouped as "Cloud: AWS, GCP / Languages: Python, Java"), emit ONE entry per sub-label: {"label": sub_label, "description": items}.
+  * If a section is a flat list (e.g. "Certifications: AWS Certified, PRINCE2"), emit ONE entry with the section heading as `label` and items joined by commas as `description`.
+  * Preserve the section heading or sub-label EXACTLY as written — do not paraphrase ("Key Skills & Tools" stays as "Key Skills & Tools").
+  * If none of these extras exist on the CV, return [].
 - Do NOT summarise, embellish, paraphrase, or add anything not present in the CV.
 - candidate_profile = the candidate's personal statement / profile / summary section, split into bullet points. If no profile section, use [].
 - achievements = a standalone "Achievements" or "Key Achievements" section. NOT bullets from inside roles. If absent, use [].
