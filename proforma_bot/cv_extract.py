@@ -26,8 +26,7 @@ from . import aoai
 
 log = logging.getLogger("proforma_bot.cv")
 
-# Attachment selection moved into gmail_client._pick_cv_attachment — Gmail
-# MIME-walks need a different shape than Graph's attachment listing.
+# Attachment selection is now the Flask uploader's job (see app.py /submit).
 
 
 # ---------------------------------------------------------------------------

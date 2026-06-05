@@ -11,9 +11,18 @@ import os
 import tempfile
 from typing import Any
 
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate, RichText
 
 log = logging.getLogger("proforma_bot.assemble")
+
+
+def review_field(value):
+    """Yellow-highlighted run in the rendered .docx — one convention for
+    'Chris must verify or complete before forwarding to PwC'. Blank values
+    become '[TBC]'. Used for Grade / Rate (Inc. Charge) / LTD-PAYE-Umbrella
+    (blank), and for the candidate's Desired Day Rate and Remote/hybrid line
+    (prefilled — Chris confirms or adjusts)."""
+    return RichText(value or "[TBC]", highlight="yellow")
 
 
 def _ensure_shape(payload: dict[str, Any]) -> dict[str, Any]:

@@ -1,53 +1,115 @@
-"""Per-message pipeline. Takes an IncomingEmail from gmail_client, returns
-a result code the trigger uses to decide mark-as-read."""
+"""Per-submission pipeline. Takes a candidate form submission (raw form
+dict + CV bytes) and produces the rendered PwC proforma + emails it to Chris.
+
+Replaces the older email-triggered orchestrator. LLM call A (forwarded-email
+body parse) is gone — the form supplies those answers deterministically. CV
+parse (call B) is reused unchanged via cv_extract.extract_cv."""
 from __future__ import annotations
 
 import logging
+import re
 
-from . import assemble, config, cv_extract, deliver, email_extract
-from .gmail_client import IncomingEmail
+from . import assemble, config, cv_extract, deliver
 
 log = logging.getLogger("proforma_bot")
 
-RESULT_PROCESSED = "processed"
-RESULT_NO_CV_ATTACHMENT = "ignored_no_attachment"  # shouldn't fire — gmail_client pre-filters
-TERMINAL_RESULTS = frozenset({RESULT_PROCESSED, RESULT_NO_CV_ATTACHMENT})
 
-
-def handle(incoming: IncomingEmail) -> str:
-    """Returns a RESULT_* string on terminal outcomes; raises on unexpected
-    failures (LLM, render, send)."""
-    if not incoming.cv_bytes:
-        log.info("uid %s: no attachment in IncomingEmail; skip", incoming.uid)
-        return RESULT_NO_CV_ATTACHMENT
-
-    # Prefer plain text; fall back to stripped HTML if the forward is HTML-only.
-    body = incoming.body_text or email_extract.html_to_text(incoming.body_html)
-
+def handle_submission(
+    form: dict[str, str], cv_filename: str, cv_bytes: bytes
+) -> None:
+    """Build the proforma payload from a form submission, render the .docx,
+    and send to Chris with the candidate's full Q&A in the body. Raises on
+    LLM/render/send failures so the caller can surface a retry message."""
+    cv_text = cv_extract.extract_text(cv_filename, cv_bytes)
+    cv = cv_extract.extract_cv(cv_text)
     log.info(
-        "uid %s: body source=%s len=%d",
-        incoming.uid,
-        "plain" if incoming.body_text else "html-stripped",
-        len(body),
+        "cv parsed: name=%r work_experience=%d",
+        cv.get("name", ""), len(cv.get("work_experience", [])),
     )
 
-    header = email_extract.extract_header(body)
-    header = email_extract.merge_manual_defaults(header)
-    log.info("uid %s: extracted header keys=%s name=%r",
-             incoming.uid, sorted(k for k, v in header.items() if v and k != "_intel"),
-             header.get("name"))
-
-    cv_text = cv_extract.extract_text(incoming.cv_filename, incoming.cv_bytes)
-    cv = cv_extract.extract_cv(cv_text)
-
-    # Candidate's name lives on the CV, not in the email body — copy it across
-    # so the proforma header renders with the actual name.
-    if not header.get("name"):
-        header["name"] = cv.get("name", "")
-
+    candidate_name = cv.get("name", "") or ""
+    header = _build_header(form, candidate_name)
     payload = {"header": header, "cv": cv}
 
-    # PII: do NOT log payload contents (passport/right-to-work/salary/phone live in _intel).
     docx_path = assemble.render_proforma(payload, config.TEMPLATE_PATH)
-    deliver.deliver(docx_path, candidate_name=header.get("name", ""))
-    return RESULT_PROCESSED
+    body_text = _build_email_body(form, candidate_name)
+    deliver.deliver(docx_path, candidate_name=candidate_name, body_text=body_text)
+
+
+def _build_header(form: dict[str, str], candidate_name: str) -> dict:
+    """Header dict consumed by assemble.render_proforma. Review fields are
+    wrapped in RichText so docxtpl renders them with a yellow highlight —
+    Chris must confirm/complete each before forwarding to PwC."""
+    return {
+        "name": candidate_name,
+        # Recruiter-supplied — blank '[TBC]', highlighted.
+        "grade": assemble.review_field(None),
+        "rate_inc_charge": assemble.review_field(None),
+        "ltd_paye_umbrella": assemble.review_field(None),
+        # Candidate-supplied but rate-adjacent — prefilled, highlighted.
+        "desired_day_rate": assemble.review_field(form.get("desired_day_rate")),
+        "office_remote_line": assemble.review_field(form.get("office_remote")),
+        # Straight pass-through from form to template.
+        "base_location": form.get("location", ""),
+        "available_from": form.get("notice_period", ""),
+        "holidays_appointments": form.get("holidays", ""),
+        "availability_to_interview": form.get("interview_availability", ""),
+        "additional_comments": _split_reasons(form.get("reasons", "")),
+    }
+
+
+# Strips leading list markers a candidate might paste: "1.", "1)", "-", "*", "•".
+_LEADING_MARKER = re.compile(r"^(?:\d+[\.\)]|[\-\*•])\s*")
+
+
+def _split_reasons(text: str) -> list[str]:
+    """Textarea ('1. foo\\n2. bar\\n') -> ['foo', 'bar']. Empty lines dropped,
+    leading numbering stripped so the docxtpl bullet style isn't doubled."""
+    out: list[str] = []
+    for raw in (text or "").splitlines():
+        line = _LEADING_MARKER.sub("", raw.strip())
+        if line:
+            out.append(line)
+    return out
+
+
+# (label, form-key) in the order Chris expects to read them.
+_EMAIL_ROWS = (
+    ("Notice period / contract end date", "notice_period"),
+    ("Current salary", "current_salary"),
+    ("Desired day rate", "desired_day_rate"),
+    ("Right to work in UK", "right_to_work"),
+    ("Location", "location"),
+    ("Previous PwC experience", "previous_pwc"),
+    ("Other interview activity", "other_interviews"),
+    ("Holidays upcoming", "holidays"),
+    ("Availability to interview", "interview_availability"),
+    ("Remote / hybrid / days in office", "office_remote"),
+)
+
+
+def _build_email_body(form: dict[str, str], candidate_name: str) -> str:
+    """Full Q&A block. Replaces the candidate reply Chris used to forward —
+    everything the candidate answered (including intel fields that don't
+    render in the .docx) needs to land in this body."""
+    parts: list[str] = [
+        "Proforma attached. Highlighted fields need your review/confirmation "
+        "before forwarding to PwC.",
+        "",
+    ]
+    if candidate_name:
+        parts.append(f"Candidate: {candidate_name}")
+        parts.append("")
+    parts.append("Candidate responses:")
+    for label, key in _EMAIL_ROWS:
+        value = (form.get(key) or "").strip() or "—"
+        parts.append(f"• {label}: {value}")
+
+    reasons = _split_reasons(form.get("reasons", ""))
+    if reasons:
+        parts.append("")
+        parts.append("Reasons suited:")
+        for i, reason in enumerate(reasons, 1):
+            parts.append(f"{i}. {reason}")
+
+    return "\n".join(parts)

@@ -12,11 +12,6 @@ TEST_MODE = os.environ.get("TEST_MODE", "true").lower() == "true"
 TEST_RECIPIENT = os.environ.get("TEST_RECIPIENT", "joel.bentley@merakitalent.com")
 DRY_RUN = os.environ.get("DRY_RUN", "false").lower() == "true"
 
-# --- Gmail (IMAP + App Password) ---
-GMAIL_USER = os.environ.get("GMAIL_USER", "merakitalent2@gmail.com")
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
-GMAIL_IMAP_SERVER = "imap.gmail.com"
-
 # --- Microsoft Graph / Outlook (client credentials) ---
 AZURE_TENANT_ID = os.environ.get("AZURE_TENANT_ID", "")
 AZURE_CLIENT_ID = os.environ.get("AZURE_CLIENT_ID", "")
@@ -24,9 +19,8 @@ AZURE_CLIENT_SECRET = os.environ.get("AZURE_CLIENT_SECRET", "")
 OUTLOOK_SENDER_EMAIL = os.environ.get("OUTLOOK_SENDER_EMAIL", "joel.bentley@merakitalent.com")
 GRAPH_BASE_URL = "https://graph.microsoft.com/v1.0"
 
-# --- Trigger ---
+# --- Recipient ---
 CHRIS_PAINE_ADDRESS = os.environ.get("CHRIS_PAINE_ADDRESS", "chris.paine@merakitalent.com")
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "60"))
 
 # --- Azure OpenAI (Fernando's resource) ---
 AOAI_ENDPOINT = os.environ.get("AOAI_ENDPOINT", "")

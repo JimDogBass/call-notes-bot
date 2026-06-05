@@ -15,24 +15,29 @@ from .outlook_sender import get_sender
 log = logging.getLogger("proforma_bot.deliver")
 
 
-def deliver(docx_path: str, candidate_name: str = "") -> None:
+def deliver(
+    docx_path: str,
+    candidate_name: str = "",
+    body_text: str | None = None,
+) -> None:
     with open(docx_path, "rb") as f:
         docx_bytes = f.read()
 
     subject = (
-        f"PwC Proforma — {candidate_name}" if candidate_name else "PwC Proforma"
-    )
-    body = (
-        f"Proforma attached for {candidate_name}.\n\n"
-        "Rate (Inc. Charge) is left as [TBC] — fill in the real charge rate before sending on."
+        f"PwC CV Submittal – {candidate_name}"
         if candidate_name
-        else "Proforma attached. Rate (Inc. Charge) is left as [TBC]."
+        else "PwC CV Submittal"
     )
+    if body_text is None:
+        body_text = (
+            "Proforma attached. Highlighted fields need your review/confirmation "
+            "before forwarding to PwC."
+        )
 
     get_sender().send(
         to=config.CHRIS_PAINE_ADDRESS,
         subject=subject,
-        body_text=body,
+        body_text=body_text,
         attachment_bytes=docx_bytes,
         attachment_name=os.path.basename(docx_path),
     )
