@@ -53,12 +53,11 @@ class OutlookSender:
         to: str,
         subject: str,
         body_text: str,
-        attachment_bytes: bytes | None = None,
-        attachment_name: str = "attachment.docx",
-        attachment_content_type: str = (
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        ),
+        attachments: list[dict] | None = None,
     ) -> None:
+        """Send a message via Graph. `attachments` is a list of
+        {"name": str, "bytes": bytes, "content_type": str} dicts; order is
+        preserved in the outgoing message."""
         original_to = to
         if config.DRY_RUN:
             log.info("DRY_RUN: would send %r -> %s (skipped)", subject, to)
@@ -77,14 +76,15 @@ class OutlookSender:
             },
             "saveToSentItems": True,
         }
-        if attachment_bytes:
+        if attachments:
             message["message"]["attachments"] = [
                 {
                     "@odata.type": "#microsoft.graph.fileAttachment",
-                    "name": attachment_name,
-                    "contentType": attachment_content_type,
-                    "contentBytes": base64.b64encode(attachment_bytes).decode("ascii"),
+                    "name": a["name"],
+                    "contentType": a["content_type"],
+                    "contentBytes": base64.b64encode(a["bytes"]).decode("ascii"),
                 }
+                for a in attachments
             ]
 
         url = f"{config.GRAPH_BASE_URL}/users/{config.OUTLOOK_SENDER_EMAIL}/sendMail"
@@ -92,7 +92,9 @@ class OutlookSender:
         if r.status_code not in (200, 202):
             log.error("sendMail failed: %s %s", r.status_code, r.text)
         r.raise_for_status()
-        log.info("sent %r -> %s", subject, to)
+        log.info(
+            "sent %r -> %s (attachments=%d)", subject, to, len(attachments or [])
+        )
 
 
 _singleton: OutlookSender | None = None

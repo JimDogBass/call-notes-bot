@@ -40,6 +40,7 @@ FORM_HTML = """<!doctype html>
   <div class="brand">Meraki Talent</div>
   <h1>Candidate Submission</h1><p class="sub">A few quick details and your CV. We'll handle the rest.</p>
   <form class="card" action="/submit" method="post" enctype="multipart/form-data">
+    <label>Role applying for <span class="hint">(e.g. Senior Data Engineer)</span></label><input type="text" name="role" />
     <label>Notice Period / contract end date</label><input type="text" name="notice_period" />
     <label>Current Salary</label><input type="text" name="current_salary" />
     <label>Desired Day Rate</label><input type="text" name="desired_day_rate" />
@@ -101,9 +102,9 @@ ERROR_HTML = """<!doctype html>
 """
 
 FORM_FIELDS = (
-    "notice_period", "current_salary", "desired_day_rate", "right_to_work",
-    "location", "previous_pwc", "other_interviews", "holidays",
-    "interview_availability", "office_remote", "reasons",
+    "role", "notice_period", "current_salary", "desired_day_rate",
+    "right_to_work", "location", "previous_pwc", "other_interviews",
+    "holidays", "interview_availability", "office_remote", "reasons",
 )
 
 

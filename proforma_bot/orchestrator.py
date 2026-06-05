@@ -18,8 +18,9 @@ def handle_submission(
     form: dict[str, str], cv_filename: str, cv_bytes: bytes
 ) -> None:
     """Build the proforma payload from a form submission, render the .docx,
-    and send to Chris with the candidate's full Q&A in the body. Raises on
-    LLM/render/send failures so the caller can surface a retry message."""
+    and send to Chris with the candidate's full Q&A in the body + the original
+    CV attached. Raises on LLM/render/send failures so the caller can surface
+    a retry message."""
     cv_text = cv_extract.extract_text(cv_filename, cv_bytes)
     cv = cv_extract.extract_cv(cv_text)
     log.info(
@@ -28,12 +29,20 @@ def handle_submission(
     )
 
     candidate_name = cv.get("name", "") or ""
+    role = (form.get("role") or "").strip()
     header = _build_header(form, candidate_name)
     payload = {"header": header, "cv": cv}
 
     docx_path = assemble.render_proforma(payload, config.TEMPLATE_PATH)
-    body_text = _build_email_body(form, candidate_name)
-    deliver.deliver(docx_path, candidate_name=candidate_name, body_text=body_text)
+    body_text = _build_email_body(form, candidate_name, role)
+    deliver.deliver(
+        docx_path,
+        cv_filename=cv_filename,
+        cv_bytes=cv_bytes,
+        candidate_name=candidate_name,
+        role=role,
+        body_text=body_text,
+    )
 
 
 def _build_header(form: dict[str, str], candidate_name: str) -> dict:
@@ -88,17 +97,22 @@ _EMAIL_ROWS = (
 )
 
 
-def _build_email_body(form: dict[str, str], candidate_name: str) -> str:
+def _build_email_body(
+    form: dict[str, str], candidate_name: str, role: str = ""
+) -> str:
     """Full Q&A block. Replaces the candidate reply Chris used to forward —
     everything the candidate answered (including intel fields that don't
     render in the .docx) needs to land in this body."""
     parts: list[str] = [
-        "Proforma attached. Highlighted fields need your review/confirmation "
-        "before forwarding to PwC.",
+        "Proforma attached, original CV also attached for your records. "
+        "Highlighted fields need your review/confirmation before forwarding to PwC.",
         "",
     ]
+    if role:
+        parts.append(f"Role: {role}")
     if candidate_name:
         parts.append(f"Candidate: {candidate_name}")
+    if role or candidate_name:
         parts.append("")
     parts.append("Candidate responses:")
     for label, key in _EMAIL_ROWS:
