@@ -34,6 +34,7 @@ FORM_HTML = """<!doctype html>
   h1{font-size:22px;margin:18px 0 4px;color:var(--ink)}p.sub{color:var(--muted);margin:0 0 24px}
   .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(16,64,112,0.04)}
   label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px;color:var(--ink)}
+  .hint{font-weight:400;color:var(--muted);font-size:13px}
   input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
   input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,64,112,0.12)}
   .reasons-group{margin-top:6px}
@@ -45,24 +46,24 @@ FORM_HTML = """<!doctype html>
   <img class="logo" src="/static/meraki_logo.png" alt="Meraki Talent" />
   <h1>Candidate Submission</h1><p class="sub">A few quick details and your CV. We'll handle the rest.</p>
   <form class="card" action="/submit" method="post" enctype="multipart/form-data">
-    <label>Role applying for</label><input type="text" name="role" required />
-    <label>Notice period / contract end date</label><input type="text" name="notice_period" required />
-    <label>Current salary</label><input type="text" name="current_salary" required />
-    <label>Desired day rate</label><input type="text" name="desired_day_rate" required />
-    <label>Right to work in UK</label><input type="text" name="right_to_work" required />
-    <label>Location</label><input type="text" name="location" required />
-    <label>Previous PwC experience</label><input type="text" name="previous_pwc" required />
-    <label>Other interview activity</label><input type="text" name="other_interviews" required />
-    <label>Any holidays upcoming</label><input type="text" name="holidays" required />
-    <label>Availability to interview</label><input type="text" name="interview_availability" required />
-    <label>Remote / hybrid / days in office</label><input type="text" name="office_remote" required />
-    <label>Reasons you are good for the role</label>
+    <label>Role you're applying for</label><input type="text" name="role" required />
+    <label>What's your notice period or contract end date?</label><input type="text" name="notice_period" required />
+    <label>What's your current salary?</label><input type="text" name="current_salary" required />
+    <label>What's your desired day rate?</label><input type="text" name="desired_day_rate" required />
+    <label>Do you have the right to work in the UK? <span class="hint">(UK passport, visa, etc.)</span></label><input type="text" name="right_to_work" required />
+    <label>Where are you based?</label><input type="text" name="location" required />
+    <label>Have you worked with PwC before?</label><input type="text" name="previous_pwc" required />
+    <label>Are you involved in any other interview processes? <span class="hint">(outline anything that could engage you ahead of this contract)</span></label><input type="text" name="other_interviews" required />
+    <label>Do you have any upcoming holidays?</label><input type="text" name="holidays" required />
+    <label>When are you available to interview?</label><input type="text" name="interview_availability" required />
+    <label>Office, hybrid, or fully remote? <span class="hint">(e.g. happy with 3 days a week in office, or fully remote)</span></label><input type="text" name="office_remote" required />
+    <label>Why are you a good fit for this role?</label>
     <div class="reasons-group">
       <input type="text" name="reason_1" placeholder="Reason 1" required />
       <input type="text" name="reason_2" placeholder="Reason 2" required />
       <input type="text" name="reason_3" placeholder="Reason 3" required />
     </div>
-    <label>Upload your CV</label>
+    <label>Upload your CV <span class="hint">(.docx or .pdf)</span></label>
     <input type="file" name="cv" accept=".docx,.pdf" required />
     <button type="submit">Submit</button>
     <p class="note">Your CV is processed to generate a submission document and forwarded to the hiring team.</p>
