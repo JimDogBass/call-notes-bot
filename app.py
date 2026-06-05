@@ -21,42 +21,51 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB — matches handoff cap
 ALLOWED_EXTENSIONS = (".docx", ".pdf")
 
 
+# Brand colour sampled from Meraki_Logo_Blue.ai; kept in CSS only.
 FORM_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Candidate Submission — Meraki Talent</title>
 <style>
-  :root{--ink:#1a1a2e;--muted:#6b6b7b;--line:#e4e4ec;--accent:#2d6a4f;--bg:#f7f7fa}
-  *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
-  .wrap{max-width:640px;margin:0 auto;padding:32px 20px 64px}.brand{font-weight:700;font-size:20px}
-  h1{font-size:22px;margin:18px 0 4px}p.sub{color:var(--muted);margin:0 0 24px}
-  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px}
-  label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px}.hint{font-weight:400;color:var(--muted);font-size:13px}
-  input[type=text],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
-  textarea{min-height:96px;resize:vertical}
+  :root{--ink:#104070;--muted:#6b6b7b;--line:#d8dde6;--accent:#104070;--accent-hover:#0b2e52;--bg:#f4f6fb}
+  *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1a1a2e;background:var(--bg);line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 20px 64px}
+  .logo{display:block;max-width:220px;height:auto;margin:0 0 24px}
+  h1{font-size:22px;margin:18px 0 4px;color:var(--ink)}p.sub{color:var(--muted);margin:0 0 24px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(16,64,112,0.04)}
+  label{display:block;font-weight:600;font-size:14px;margin:16px 0 6px;color:var(--ink)}
+  input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
+  input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,64,112,0.12)}
+  .reasons-group{margin-top:6px}
+  .reasons-group input{margin-bottom:8px}
   button{margin-top:28px;width:100%;padding:14px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--accent-hover)}
   .note{font-size:12px;color:var(--muted);margin-top:14px;text-align:center}
 </style></head><body><div class="wrap">
-  <div class="brand">Meraki Talent</div>
+  <img class="logo" src="/static/meraki_logo.png" alt="Meraki Talent" />
   <h1>Candidate Submission</h1><p class="sub">A few quick details and your CV. We'll handle the rest.</p>
   <form class="card" action="/submit" method="post" enctype="multipart/form-data">
-    <label>Role applying for <span class="hint">(e.g. Senior Data Engineer)</span></label><input type="text" name="role" />
-    <label>Notice Period / contract end date</label><input type="text" name="notice_period" />
-    <label>Current Salary</label><input type="text" name="current_salary" />
-    <label>Desired Day Rate</label><input type="text" name="desired_day_rate" />
-    <label>Right to work in UK <span class="hint">(UK passport, visa etc)</span></label><input type="text" name="right_to_work" />
-    <label>Location</label><input type="text" name="location" />
-    <label>Previous PWC experience</label><input type="text" name="previous_pwc" />
-    <label>Other interview activity <span class="hint">(outline if you're in a process and could be engaged ahead of the contract)</span></label><input type="text" name="other_interviews" />
-    <label>Any holidays upcoming</label><input type="text" name="holidays" />
-    <label>Availability to interview</label><input type="text" name="interview_availability" />
-    <label>Remote / hybrid / days in office <span class="hint">(e.g. happy with 3 days a week in office, or fully remote)</span></label><input type="text" name="office_remote" />
-    <label>Reasons you are good for the role <span class="hint">(one per line)</span></label>
-    <textarea name="reasons" placeholder="1.&#10;2.&#10;3."></textarea>
-    <label>Upload your CV <span class="hint">(.docx or .pdf)</span></label>
+    <label>Role applying for</label><input type="text" name="role" required />
+    <label>Notice period / contract end date</label><input type="text" name="notice_period" required />
+    <label>Current salary</label><input type="text" name="current_salary" required />
+    <label>Desired day rate</label><input type="text" name="desired_day_rate" required />
+    <label>Right to work in UK</label><input type="text" name="right_to_work" required />
+    <label>Location</label><input type="text" name="location" required />
+    <label>Previous PwC experience</label><input type="text" name="previous_pwc" required />
+    <label>Other interview activity</label><input type="text" name="other_interviews" required />
+    <label>Any holidays upcoming</label><input type="text" name="holidays" required />
+    <label>Availability to interview</label><input type="text" name="interview_availability" required />
+    <label>Remote / hybrid / days in office</label><input type="text" name="office_remote" required />
+    <label>Reasons you are good for the role</label>
+    <div class="reasons-group">
+      <input type="text" name="reason_1" placeholder="Reason 1" required />
+      <input type="text" name="reason_2" placeholder="Reason 2" required />
+      <input type="text" name="reason_3" placeholder="Reason 3" required />
+    </div>
+    <label>Upload your CV</label>
     <input type="file" name="cv" accept=".docx,.pdf" required />
     <button type="submit">Submit</button>
-    <p class="note">Your CV is processed to generate a submission document and is not stored.</p>
+    <p class="note">Your CV is processed to generate a submission document and forwarded to the hiring team.</p>
   </form>
 </div></body></html>
 """
@@ -66,13 +75,13 @@ SUCCESS_HTML = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Submission received — Meraki Talent</title>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1a1a2e;background:#f7f7fa;line-height:1.5}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1a1a2e;background:#f4f6fb;line-height:1.5}
   .wrap{max-width:560px;margin:0 auto;padding:64px 20px;text-align:center}
-  .brand{font-weight:700;font-size:20px;margin-bottom:32px}
-  .card{background:#fff;border:1px solid #e4e4ec;border-radius:12px;padding:32px}
-  h1{font-size:22px;margin:0 0 12px}p{color:#6b6b7b;margin:0}
+  .logo{max-width:220px;height:auto;margin:0 auto 32px;display:block}
+  .card{background:#fff;border:1px solid #d8dde6;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(16,64,112,0.04)}
+  h1{font-size:22px;margin:0 0 12px;color:#104070}p{color:#6b6b7b;margin:0}
 </style></head><body><div class="wrap">
-  <div class="brand">Meraki Talent</div>
+  <img class="logo" src="/static/meraki_logo.png" alt="Meraki Talent" />
   <div class="card">
     <h1>Thanks — submission received.</h1>
     <p>We've passed your details and CV on to the team. They'll be in touch shortly.</p>
@@ -85,14 +94,15 @@ ERROR_HTML = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Something went wrong — Meraki Talent</title>
 <style>
-  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1a1a2e;background:#f7f7fa;line-height:1.5}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1a1a2e;background:#f4f6fb;line-height:1.5}
   .wrap{max-width:560px;margin:0 auto;padding:64px 20px;text-align:center}
-  .brand{font-weight:700;font-size:20px;margin-bottom:32px}
-  .card{background:#fff;border:1px solid #e4e4ec;border-radius:12px;padding:32px}
-  h1{font-size:22px;margin:0 0 12px}p{color:#6b6b7b;margin:0 0 18px}
-  a{display:inline-block;padding:10px 18px;border-radius:8px;background:#2d6a4f;color:#fff;text-decoration:none;font-weight:600}
+  .logo{max-width:220px;height:auto;margin:0 auto 32px;display:block}
+  .card{background:#fff;border:1px solid #d8dde6;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(16,64,112,0.04)}
+  h1{font-size:22px;margin:0 0 12px;color:#104070}p{color:#6b6b7b;margin:0 0 18px}
+  a{display:inline-block;padding:10px 18px;border-radius:8px;background:#104070;color:#fff;text-decoration:none;font-weight:600}
+  a:hover{background:#0b2e52}
 </style></head><body><div class="wrap">
-  <div class="brand">Meraki Talent</div>
+  <img class="logo" src="/static/meraki_logo.png" alt="Meraki Talent" />
   <div class="card">
     <h1>Something went wrong.</h1>
     <p>{{ message }}</p>
@@ -104,7 +114,8 @@ ERROR_HTML = """<!doctype html>
 FORM_FIELDS = (
     "role", "notice_period", "current_salary", "desired_day_rate",
     "right_to_work", "location", "previous_pwc", "other_interviews",
-    "holidays", "interview_availability", "office_remote", "reasons",
+    "holidays", "interview_availability", "office_remote",
+    "reason_1", "reason_2", "reason_3",
 )
 
 
@@ -126,6 +137,14 @@ def healthz():
 def submit():
     form_data = {k: (request.form.get(k) or "").strip() for k in FORM_FIELDS}
 
+    # Server-side required check (HTML `required` is the primary UX; this
+    # catches anyone bypassing the browser).
+    missing = [k for k, v in form_data.items() if not v]
+    if missing:
+        return _error(
+            "Please fill in every field before submitting."
+        ), 400
+
     upload = request.files.get("cv")
     if upload is None or not upload.filename:
         return _error("Please attach your CV (.docx or .pdf)."), 400
@@ -139,10 +158,8 @@ def submit():
 
     # PII: never log form values or CV content — lengths and counts only.
     log.info(
-        "submission received: cv=%s cv_len=%d non_empty_fields=%d test_mode=%s",
-        filename, len(cv_bytes),
-        sum(1 for v in form_data.values() if v),
-        config.TEST_MODE,
+        "submission received: cv=%s cv_len=%d test_mode=%s",
+        filename, len(cv_bytes), config.TEST_MODE,
     )
 
     try:

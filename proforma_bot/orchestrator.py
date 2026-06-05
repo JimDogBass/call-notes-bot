@@ -7,7 +7,6 @@ parse (call B) is reused unchanged via cv_extract.extract_cv."""
 from __future__ import annotations
 
 import logging
-import re
 
 from . import assemble, config, cv_extract, deliver
 
@@ -63,22 +62,20 @@ def _build_header(form: dict[str, str], candidate_name: str) -> dict:
         "available_from": form.get("notice_period", ""),
         "holidays_appointments": form.get("holidays", ""),
         "availability_to_interview": form.get("interview_availability", ""),
-        "additional_comments": _split_reasons(form.get("reasons", "")),
+        "additional_comments": _collect_reasons(form),
     }
 
 
-# Strips leading list markers a candidate might paste: "1.", "1)", "-", "*", "•".
-_LEADING_MARKER = re.compile(r"^(?:\d+[\.\)]|[\-\*•])\s*")
-
-
-def _split_reasons(text: str) -> list[str]:
-    """Textarea ('1. foo\\n2. bar\\n') -> ['foo', 'bar']. Empty lines dropped,
-    leading numbering stripped so the docxtpl bullet style isn't doubled."""
+def _collect_reasons(form: dict[str, str]) -> list[str]:
+    """Three separate form inputs (reason_1/2/3) -> ordered list, blanks
+    dropped. Server-side required validation in app.py /submit means all
+    three arrive non-empty in practice — defensive strip is for the
+    bypass-the-form case."""
     out: list[str] = []
-    for raw in (text or "").splitlines():
-        line = _LEADING_MARKER.sub("", raw.strip())
-        if line:
-            out.append(line)
+    for key in ("reason_1", "reason_2", "reason_3"):
+        value = (form.get(key) or "").strip()
+        if value:
+            out.append(value)
     return out
 
 
@@ -119,7 +116,7 @@ def _build_email_body(
         value = (form.get(key) or "").strip() or "—"
         parts.append(f"• {label}: {value}")
 
-    reasons = _split_reasons(form.get("reasons", ""))
+    reasons = _collect_reasons(form)
     if reasons:
         parts.append("")
         parts.append("Reasons suited:")
