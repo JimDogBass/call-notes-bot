@@ -7,8 +7,10 @@ parse (call B) is reused unchanged via cv_extract.extract_cv."""
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from . import assemble, config, cv_extract, deliver
+from .outlook_sender import get_sender
 
 log = logging.getLogger("proforma_bot")
 
@@ -124,3 +126,53 @@ def _build_email_body(
             parts.append(f"{i}. {reason}")
 
     return "\n".join(parts)
+
+
+def notify_failure(
+    form: dict[str, str], cv_filename: str, cv_len: int, exc: BaseException
+) -> None:
+    """Best-effort alert to Chris (cc Joel) when the pipeline raises. Swallows
+    its own send errors so it never masks the original failure or breaks the
+    candidate's retry page response. Form data only — no CV attachment, since
+    a Graph attachment-size failure is itself a likely cause of the original
+    exception, and re-attaching would likely fail the alert too."""
+    try:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        exc_class = exc.__class__.__name__
+        role = (form.get("role") or "").strip() or "(not provided)"
+
+        parts: list[str] = [
+            f"A candidate submission failed processing at {ts}.",
+            "",
+            f"Failure: {exc_class}",
+            f"CV uploaded: {cv_filename} ({cv_len} bytes)",
+            f"Role: {role}",
+            "",
+            "Candidate responses (raw form data, no proforma was rendered):",
+        ]
+        for label, key in _EMAIL_ROWS:
+            value = (form.get(key) or "").strip() or "—"
+            parts.append(f"• {label}: {value}")
+
+        reasons = _collect_reasons(form)
+        if reasons:
+            parts.append("")
+            parts.append("Reasons suited:")
+            for i, reason in enumerate(reasons, 1):
+                parts.append(f"{i}. {reason}")
+
+        parts.append("")
+        parts.append(
+            "Candidate has been shown a retry page. Check Railway logs for "
+            "the traceback."
+        )
+
+        subject = f"PwC Proforma — submission FAILED ({exc_class})"
+        get_sender().send(
+            to=config.CHRIS_PAINE_ADDRESS,
+            cc=[config.OUTLOOK_SENDER_EMAIL],
+            subject=subject,
+            body_text="\n".join(parts),
+        )
+    except Exception:
+        log.exception("failure-alert send failed; original error already logged")

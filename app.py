@@ -17,7 +17,9 @@ logging.basicConfig(
 )
 log = logging.getLogger("proforma_bot.app")
 
-MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB — matches handoff cap
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024  # 25 MB — outlook_sender routes large
+# attachments through Graph's draft + upload-session path, so CVs above the
+# ~3 MB inline ceiling deliver instead of falling back to the failure alert.
 ALLOWED_EXTENSIONS = (".docx", ".pdf")
 
 
@@ -37,8 +39,10 @@ FORM_HTML = """<!doctype html>
   .hint{font-weight:400;color:var(--muted);font-size:13px}
   input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff}
   input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,64,112,0.12)}
+  textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff;resize:vertical;min-height:110px;line-height:1.5}
+  textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(16,64,112,0.12)}
   .reasons-group{margin-top:6px}
-  .reasons-group input{margin-bottom:8px}
+  .reasons-group textarea{margin-bottom:10px}
   button{margin-top:28px;width:100%;padding:14px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
   button:hover{background:var(--accent-hover)}
   .note{font-size:12px;color:var(--muted);margin-top:14px;text-align:center}
@@ -59,9 +63,9 @@ FORM_HTML = """<!doctype html>
     <label>Office, hybrid, or fully remote? <span class="hint">(e.g. happy with 3 days a week in office, or fully remote)</span></label><input type="text" name="office_remote" required />
     <label>Why are you a good fit for this role?</label>
     <div class="reasons-group">
-      <input type="text" name="reason_1" placeholder="Reason 1" required />
-      <input type="text" name="reason_2" placeholder="Reason 2" required />
-      <input type="text" name="reason_3" placeholder="Reason 3" required />
+      <textarea name="reason_1" rows="4" placeholder="Reason 1" required></textarea>
+      <textarea name="reason_2" rows="4" placeholder="Reason 2" required></textarea>
+      <textarea name="reason_3" rows="4" placeholder="Reason 3" required></textarea>
     </div>
     <label>Upload your CV <span class="hint">(.docx or .pdf)</span></label>
     <input type="file" name="cv" accept=".docx,.pdf" required />
@@ -165,11 +169,9 @@ def submit():
 
     try:
         orchestrator.handle_submission(form_data, filename, cv_bytes)
-    except Exception:
+    except Exception as exc:
         log.exception("submission pipeline failed")
-        # DECISION (rescope #4): on failure we currently show the candidate a
-        # retry page only. Adding a Chris Teams/email alert is Joel's call —
-        # wire it here if/when he confirms.
+        orchestrator.notify_failure(form_data, filename, len(cv_bytes), exc)
         return _error(
             "Something went wrong on our end. Please refresh and try again."
         ), 500
@@ -179,7 +181,7 @@ def submit():
 
 @app.errorhandler(413)
 def upload_too_large(_e):
-    return _error("Your CV exceeds the 10 MB limit. Please upload a smaller file."), 413
+    return _error("Your CV exceeds the 25 MB limit. Please upload a smaller file."), 413
 
 
 def _error(message: str) -> str:
