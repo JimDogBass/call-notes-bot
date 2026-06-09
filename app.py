@@ -5,9 +5,12 @@ Replaces the previous Gmail/IMAP polling worker. Same package internals
 (cv_extract, assemble, deliver) — only the trigger surface changed."""
 from __future__ import annotations
 
+import hashlib
 import logging
+import threading
+import time
 
-from flask import Flask, render_template_string, request
+from flask import Flask, redirect, render_template_string, request, url_for
 
 from proforma_bot import config, orchestrator
 
@@ -69,10 +72,24 @@ FORM_HTML = """<!doctype html>
     </div>
     <label>Upload your CV <span class="hint">(.docx or .pdf)</span></label>
     <input type="file" name="cv" accept=".docx,.pdf" required />
-    <button type="submit">Submit</button>
+    <button type="submit" id="submitBtn">Submit</button>
     <p class="note">Your CV is processed to generate a submission document and forwarded to the hiring team.</p>
   </form>
-</div></body></html>
+</div>
+<script>
+  (function(){
+    var form = document.querySelector('form');
+    var btn = document.getElementById('submitBtn');
+    var submitted = false;
+    form.addEventListener('submit', function(e){
+      if (submitted) { e.preventDefault(); return; }
+      submitted = true;
+      btn.disabled = true;
+      btn.textContent = 'Submitting… this can take up to 30 seconds';
+    });
+  })();
+</script>
+</body></html>
 """
 
 SUCCESS_HTML = """<!doctype html>
@@ -128,6 +145,46 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 
 
+# Dedup: the pipeline takes ~20–30s, during which an impatient candidate may
+# click Submit repeatedly. Browser-side button-lock + PRG cover the common
+# cases; this server-side check is the last line of defence (e.g. a fresh tab,
+# or a refresh of the pre-PRG history entry). Window is 10 min — long enough
+# to absorb any sensible retry, short enough that a genuine resubmission
+# (corrected typo) is still possible afterwards. State lives in process memory;
+# Procfile pins gunicorn to 1 worker so it's effectively a global lock.
+_DEDUP_WINDOW_SECONDS = 600
+_recent_submissions: dict[str, float] = {}
+_dedup_lock = threading.Lock()
+
+
+def _submission_fingerprint(cv_bytes: bytes, role: str) -> str:
+    h = hashlib.sha256()
+    h.update(cv_bytes)
+    h.update(b"\x00")
+    h.update(role.strip().lower().encode("utf-8"))
+    return h.hexdigest()
+
+
+def _register_submission(fingerprint: str) -> bool:
+    """Returns True if this fingerprint was already seen within the dedup
+    window (i.e. duplicate). Otherwise records it now and returns False."""
+    now = time.time()
+    with _dedup_lock:
+        for k in [k for k, t in _recent_submissions.items()
+                  if now - t > _DEDUP_WINDOW_SECONDS]:
+            del _recent_submissions[k]
+        if fingerprint in _recent_submissions:
+            return True
+        _recent_submissions[fingerprint] = now
+        return False
+
+
+def _release_submission(fingerprint: str) -> None:
+    """Drop a fingerprint so the candidate's retry-after-failure can succeed."""
+    with _dedup_lock:
+        _recent_submissions.pop(fingerprint, None)
+
+
 @app.get("/")
 def index():
     return render_template_string(FORM_HTML)
@@ -136,6 +193,11 @@ def index():
 @app.get("/healthz")
 def healthz():
     return ("ok", 200)
+
+
+@app.get("/success")
+def success():
+    return render_template_string(SUCCESS_HTML)
 
 
 @app.post("/submit")
@@ -161,6 +223,14 @@ def submit():
     if not cv_bytes:
         return _error("The uploaded CV was empty. Please re-upload."), 400
 
+    fingerprint = _submission_fingerprint(cv_bytes, form_data["role"])
+    if _register_submission(fingerprint):
+        log.info(
+            "duplicate submission ignored (same CV+role within %ds)",
+            _DEDUP_WINDOW_SECONDS,
+        )
+        return redirect(url_for("success"), code=303)
+
     # PII: never log form values or CV content — lengths and counts only.
     log.info(
         "submission received: cv=%s cv_len=%d test_mode=%s",
@@ -170,13 +240,17 @@ def submit():
     try:
         orchestrator.handle_submission(form_data, filename, cv_bytes)
     except Exception as exc:
+        # Release so the candidate's retry isn't silently swallowed by dedup.
+        # Edge case: if delivery actually happened-but-something-after-it-raised,
+        # Chris could get one duplicate on retry — acceptable vs blocking retry.
+        _release_submission(fingerprint)
         log.exception("submission pipeline failed")
         orchestrator.notify_failure(form_data, filename, len(cv_bytes), exc)
         return _error(
             "Something went wrong on our end. Please refresh and try again."
         ), 500
 
-    return render_template_string(SUCCESS_HTML)
+    return redirect(url_for("success"), code=303)
 
 
 @app.errorhandler(413)
